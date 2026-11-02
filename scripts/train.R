@@ -1,0 +1,7 @@
+source("R/bootstrap.R")
+system <- train_system()
+save_system(system)
+dir.create("reports", showWarnings = FALSE)
+jsonlite::write_json(system$health, "reports/model-health.json", pretty = TRUE, auto_unbox = TRUE, na = "null")
+print(system$health$evaluation_metrics)
+cat("Saved models/netpredict.rds and reports/model-health.json\n")

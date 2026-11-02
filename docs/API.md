@@ -1,0 +1,66 @@
+# R REST API
+
+Run `Rscript scripts/run_api.R` from the repository root. Base URL:
+`http://127.0.0.1:8000/api/v1`. Swagger UI is at `/__docs__/`.
+
+Default query parameters: `device_id=core-router-alpha`, `interface_id=xe-0/0/1`.
+URL-encode identifiers. The API seeds 45 minutes of the bundled trace on startup.
+
+| Method | Path | Result |
+|---|---|---|
+| GET | `/health` | Model, explainer and conformal readiness |
+| GET | `/health/model` | Held-out metrics, calibration bins, PSI and baselines |
+| POST | `/health/recalibrate` | Refit original calibration fold in memory |
+| POST | `/telemetry/ingest` | Validate and append a complete batch atomically |
+| GET | `/telemetry/latest` | Latest record plus present anomaly score |
+| GET | `/telemetry/history?limit=60` | Up to 720 records for the specified interface |
+| POST | `/telemetry/stream/step` | Advance one minute; forecast and log critical risk |
+| POST | `/telemetry/stream/jump-incident` | Rebuild history at first severe event |
+| POST | `/telemetry/stream/reset` | Clear replay state and return to minute 46 |
+| POST | `/telemetry/live-poll?capacity_mbps=1000` | Host byte-counter rates; first poll initializes |
+| GET | `/predict/horizons` | Forecasts at 5, 15, 30 minutes; no telemetry mutation |
+| GET | `/predict/incidents` | Replay critical forecasts and observed outcomes |
+| GET | `/explain/latest` | Approximate Shapley explanation of latest T+15 risk |
+| GET | `/explain/<prediction_id>` | Explanation using cached prediction features |
+| POST | `/simulate` | Baseline and intervention predictions |
+| POST | `/simulate/prescribe?horizon_minutes=15` | Minimum-cost feasible grid candidate |
+
+Missing interfaces and prediction IDs return 404. Invalid bodies, limits, scenarios,
+cadence or insufficient history return 422. The in-memory prediction and incident
+caches retain at most 500 entries; telemetry retains 720 samples per interface.
+
+## Ingestion example in R
+
+```r
+source("R/bootstrap.R")
+rows <- load_trace()[1:35, ]
+rows$device_id <- "lab-router"
+body <- jsonlite::toJSON(list(records = rows), dataframe = "rows",
+                         auto_unbox = TRUE, POSIXt = "ISO8601")
+h <- curl::new_handle(postfields = body)
+curl::handle_setheaders(h, "Content-Type" = "application/json")
+curl::curl_fetch_memory("http://127.0.0.1:8000/api/v1/telemetry/ingest", h)
+```
+
+Required fields are `device_id`, `interface_id`, and the twelve numeric telemetry
+fields listed in `R/telemetry.R` (`bgp_flap_count` defaults to zero). Percentages
+must be within 0..100; all other numeric values must be finite and nonnegative.
+Provide timestamps as UTC ISO 8601, one minute apart. The server supplies the
+current timestamp if omitted, which is generally unsuitable for a historical batch.
+
+## Scenario body
+
+```json
+{
+  "device_id": "core-router-alpha",
+  "interface_id": "xe-0/0/1",
+  "horizon_minutes": 15,
+  "reroute_traffic_pct": 25,
+  "ingress_rate_limit_pct": 5,
+  "buffer_expansion_factor": 1.25,
+  "enable_priority_queuing": true
+}
+```
+
+Rerouting: 0..100%; shaping: 0..90%; buffer factor: 1..3; horizon: 5, 15, or 30.
+Scenario evaluation is a steady-state surrogate and never writes network settings.

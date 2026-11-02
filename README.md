@@ -1,182 +1,95 @@
-# NetPredict
+# NetPredict — R Programming Lab
 
-> An early warning system for network congestion and performance degradation.
+An R application for network congestion forecasting, telemetry replay, explanations and mitigation experiments. This branch replaces the Python backend, React dashboard and Next.js documentation site with R modules, a Shiny dashboard, a Plumber API and an R Markdown lab notebook. No Python or Node.js runtime is needed.
 
-[![Live Demo](https://img.shields.io/badge/Live_Cockpit-Visit_App-24292e?logo=vercel&logoColor=white)](https://netpredict-cockpit.vercel.app)
-[![Documentation](https://img.shields.io/badge/Docs_Portal-Read_Docs-4A6B37?logo=bookstack&logoColor=white)](https://netpredict-docs.vercel.app/docs)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![R Shiny dashboard](docs/screenshots/r-dashboard.png)
 
----
+## Run locally
 
-## Overview
+Install R 4.3 or newer (RStudio is optional). Open `NetPredict.Rproj`, or open a terminal **in this repository root**:
 
-Most network monitoring tools (like Datadog, Zabbix, or PRTG) are **reactive**. They only alert engineers after packets have already dropped, a router buffer has overflowed, and users are experiencing disconnects.
-
-**NetPredict is a predictive early warning system.** Instead of waiting for a failure to happen, it analyzes real-time network trends—such as queue buildup and rising latency slopes—to predict congestion **5, 15, and 30 minutes in advance**.
-
-![NetPredict Live Cockpit](docs/screenshots/dashboard_overview.png)
-
----
-
-## Why This Matters
-
-Think of a network link like a highway:
-- **Traditional Monitoring:** Alerts you after a 10-car pileup has already blocked the road.
-- **NetPredict:** Notices that cars are beginning to brake and bunch together, predicting a traffic jam 15 minutes before anyone comes to a complete standstill.
-
-By catching queue pressure early, network engineers can reroute traffic, adjust QoS settings, or apply rate limits *before* packet loss impacts users.
-
----
-
-## Key Features
-
-- **Multi-Horizon Predictions (5m, 15m, 30m):**
-  Forecasts risk across three critical operational windows so engineers have enough time to take action.
-
-- **Root-Cause Explainability:**
-  Doesn't just output a risk percentage. It shows exactly *why* the risk is elevated (e.g., whether it is driven by queue buildup, TCP retransmissions, or bandwidth spikes).
-
-- **"What-If" Mitigation Simulator:**
-  Lets operators test changes before touching production equipment. For example, you can simulate rerouting 20% of traffic or expanding buffer size to see how much the predicted risk drops in real time.
-
-- **Dual Ingestion Engine:**
-  - **Live Hardware Polling:** The Python backend includes a built-in collector that can read real network interface counters and measure live socket latency directly from your computer's OS.
-  - **Zero-Cost Browser Engine:** When hosted on the web without a dedicated server, the dashboard runs a built-in simulation engine with realistic daily traffic cycles and microbursts so anyone can test it for free 24/7.
-
-- **Clean, Responsive Cockpit:**
-  Built with a high-contrast tactile interface designed for quick readability during incidents. Works across desktop, tablet, and mobile devices.
-
----
-
-## How It Works
-
-```
-1. Telemetry Ingestion
-   Reads network signals: Bandwidth, Queue Occupancy, Round-Trip Time (RTT), Jitter, and Loss.
-          │
-          ▼
-2. Trend & Rate-of-Change Analysis
-   Calculates how fast queues and latency are rising over rolling 5-minute and 15-minute windows.
-          │
-          ▼
-3. Risk Prediction & Explainability
-   • Predicts failure probabilities across 5m, 15m, and 30m horizons.
-   • Explains key drivers behind the score using feature attributions.
-   • Provides a What-If sandbox to test mitigations before taking action.
+```sh
+Rscript scripts/setup.R
+Rscript scripts/run_dashboard.R
 ```
 
----
+Visit http://127.0.0.1:3838. The first launch trains models automatically; subsequent launches load `models/netpredict.rds`. Training may take a minute. Dependencies install into the ignored `.R-library` directory. If Windows cannot find Rscript, add your R installation's `bin` directory to PATH or use its full path.
 
-## Interactive Dashboard Sections
+In RStudio, use:
 
-The dashboard is divided into 7 functional workspaces:
+```r
+source("scripts/setup.R")
+shiny::runApp(".")
+```
 
-1. **Live Telemetry:** Real-time graphs of bandwidth, queue depth, round-trip time, and packet loss.
-2. **Predictive Horizons:** Risk scores and latency estimates for the next 5, 15, and 30 minutes.
-3. **Anomaly vs. Prediction:** Distinguishes between brief benign traffic spikes and real impending failures to reduce false alarms.
-4. **Root Cause Analysis:** Breaks down which telemetry metrics contributed most to the current risk score.
-5. **What-If Scenario Lab:** Interactive sliders to test traffic diversion and queue limits with instant feedback.
-6. **Model Health & Stability:** Displays model calibration and prediction accuracy metrics.
-7. **Incident Log:** Searchable history of detected congestion events and triage timestamps.
+Optional REST server, in a second terminal:
 
----
+```sh
+Rscript scripts/run_api.R
+```
 
-## Quick Start
+API: http://127.0.0.1:8000/api/v1/health · Swagger: http://127.0.0.1:8000/__docs__/
 
-You can explore NetPredict in three ways:
+Each dashboard session has independent replay state. The REST server has its own state; dashboard controls do not advance the REST playhead.
 
-### 1. Try the Live Web App (No setup required)
-- **Live Cockpit:** [https://netpredict-cockpit.vercel.app](https://netpredict-cockpit.vercel.app)
-- **Documentation Portal:** [https://netpredict-docs.vercel.app/docs](https://netpredict-docs.vercel.app/docs)
+## Lab features
 
----
+- Replay the bundled seven-day synthetic trace, step one minute, jump to an incident or reset.
+- Explore 29 backward-looking instantaneous, rolling, slope, EWMA and congestion features.
+- Predict failure probability, RTT and packet loss at **5, 15 and 30 minutes**.
+- Compare Isolation Forest present-anomaly scores with calibrated future risk.
+- Explain raw model probability using approximate permutation Shapley contributions.
+- Compare rerouting, ingress shaping, buffer expansion and priority-queuing scenarios; search a bounded intervention grid.
+- Inspect chronological holdout metrics, reliability bins, PSI drift and three baseline models.
+- Log critical forecasts and match them to observations at the actual target timestamp.
+- Read host interface throughput on Windows/Linux without inventing missing queue or loss measurements.
 
-### 2. Run with Docker Compose (Recommended for local testing)
-Clone the repository and start both backend and frontend with one command:
+## Validation and analysis
 
-```bash
-git clone https://github.com/The-AnkitPatel/NetPreditct.git
-cd NetPreditct
+```sh
+Rscript scripts/test.R
+Rscript scripts/train.R
+Rscript scripts/smoke_api.R
+Rscript scripts/smoke_dashboard.R
+```
+
+Training writes the model and `reports/model-health.json`. Unit/integration tests check leakage prevention, buffer isolation, input validation, model reload, explanation additivity, replay and intervention invariants. The HTTP smoke test starts and stops its own local API server.
+
+Open `notebooks/NetPredict_ML_Pipeline.Rmd` in RStudio and select **Knit**, or run:
+
+```r
+rmarkdown::render("notebooks/NetPredict_ML_Pipeline.Rmd", knit_root_dir = getwd())
+```
+
+Rendering HTML requires Pandoc (included with RStudio). The R analysis chunks also run without Pandoc via `knitr::purl()` and `source()`.
+
+## Containers
+
+```sh
 docker compose up --build
 ```
-- Open the Dashboard: `http://localhost:5173`
-- Open the API Docs: `http://localhost:8000/docs`
 
----
+Dashboard: port 3838. API: port 8000. Live counters inside a container describe the container network namespace. Local R execution is the primary verified lab setup; see `docs/VALIDATION.md` for checks actually performed.
 
-### 3. Run Locally (Step-by-Step)
+## Repository map
 
-#### Prerequisites
-- Python 3.12+
-- Node.js 20+
+| Path | Purpose |
+|---|---|
+| `app.R` | Shiny dashboard and session logic |
+| `R/telemetry.R`, `R/features.R` | Trace generation, validation, bounded buffers, temporal features |
+| `R/models.R` | Training, calibration, forecasting, anomaly detection, explanation and evaluation |
+| `R/service.R`, `R/simulation.R` | Replay, cached predictions, incidents and interventions |
+| `R/api.R`, `R/collector.R` | Plumber routes and read-only OS counters |
+| `scripts/` | Dependency setup, launchers, training and tests |
+| `tests/testthat/` | R regression tests |
+| `data/` | Original CSV datasets preserved from the source repository |
+| `notebooks/` | R Markdown analysis |
+| `docs/` | Architecture, API, migration and lab instructions |
 
-#### Step A: Backend
-```bash
-# Navigate to project root
-cd NetPreditct
+## Important interpretation
 
-# Create and activate virtual environment
-python -m venv .venv
+This is a synthetic-data learning project, not a validated production early-warning system. A horizon means **minutes**, so forecasting requires at least 30 consecutive one-minute samples from the requested interface. Synthetic incident detection performance does not establish real-world advance warning. Models can perform similarly to simple persistence; inspect the baseline comparison.
 
-# On Windows:
-.venv\Scripts\activate
-# On macOS/Linux:
-source .venv/bin/activate
+The R implementation intentionally uses `ranger` probability forests instead of LightGBM, and approximate permutation Shapley values instead of TreeSHAP. Model outputs will differ. See `docs/MIGRATION.md` for the full mapping, removed assumptions, and compatibility changes.
 
-# Install dependencies
-pip install -r backend/requirements.txt psutil
-
-# Run unit tests
-pytest backend/tests -v
-
-# Start backend server
-uvicorn backend.app.main:app --port 8000 --reload
-```
-
-#### Step B: Frontend
-```bash
-# In a separate terminal
-cd frontend
-npm install
-npm run dev
-```
-Open `http://localhost:5173` in your browser.
-
----
-
-## Project Structure
-
-```
-NetPredict/
-├── backend/
-│   ├── app/
-│   │   ├── api/             # FastAPI REST endpoints (telemetry, predictions, what-if)
-│   │   ├── collectors/      # Host NIC hardware collector (psutil + socket latency)
-│   │   ├── ml/              # Prediction models, anomaly detection, explainability
-│   │   └── services/        # Sliding-window buffer and feature extraction
-│   ├── tests/               # Pytest automated test suite
-│   ├── Dockerfile           # Backend container definition
-│   └── requirements.txt     # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # React UI panels and controls
-│   │   ├── services/        # API client and client-side fallback engine
-│   │   └── types/           # TypeScript data interfaces
-│   ├── Dockerfile           # Frontend container definition
-│   └── package.json
-├── docs-portal/             # Complete Next.js documentation portal
-├── docs/screenshots/        # Dashboard screenshots
-├── docker-compose.yml       # Docker Compose setup
-└── README.md
-```
-
----
-
-## Author & License
-
-- **Author:** [Ankit Patel](https://github.com/The-AnkitPatel)
-- **License:** [MIT License](LICENSE) — free to use, modify, and build upon for educational, academic, and practical use.
+Original project: [The-AnkitPatel/NetPredict](https://github.com/The-AnkitPatel/NetPredict), by Ankit Patel and contributors. The original implementation remains in `main` and Git history; this migration is on `codex/r-language-migration`.

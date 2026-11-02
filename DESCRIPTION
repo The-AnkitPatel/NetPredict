@@ -1,0 +1,11 @@
+Package: netpredict
+Title: Network Congestion Forecasting Lab
+Version: 2.0.0
+Authors@R: person("NetPredict", "Team", role = c("aut", "cre"), email = "team@example.com")
+Description: An R application for network telemetry replay, temporal feature
+    engineering, calibrated multi-horizon forecasts and intervention simulation.
+License: MIT
+Encoding: UTF-8
+Depends: R (>= 4.3)
+Imports: shiny, plumber, jsonlite, ranger, isotree
+Suggests: testthat, rmarkdown, knitr, callr, curl, httpuv, withr

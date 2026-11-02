@@ -1,0 +1,112 @@
+---
+title: "NetPredict: Network Forecasting in R"
+author: "NetPredict R Programming Lab"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+if (!file.exists("R/bootstrap.R") && file.exists("../R/bootstrap.R")) knitr::opts_knit$set(root.dir = normalizePath(".."))
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Aim and data
+
+Study a synthetic seven-day network trace. This experiment does not establish
+production performance or causal effects of network interventions.
+
+```{r load}
+source("R/bootstrap.R")
+trace <- load_trace()
+dim(trace)
+head(trace)
+summary(trace[raw_fields])
+```
+
+# Exploratory analysis
+
+```{r explore, fig.width=10, fig.height=6}
+par(mfrow = c(2, 1), mar = c(3, 4, 2, 1))
+plot(trace$timestamp, trace$queue_occupancy_pct, type = "l", col = "darkgreen", ylab = "Queue (%)", xlab = "UTC")
+plot(trace$timestamp, trace$rtt_ms, type = "l", col = "steelblue", ylab = "RTT (ms)", xlab = "UTC")
+```
+
+# Backward-looking features and future labels
+
+```{r features}
+features <- extract_features(trace)
+stopifnot(ncol(features) == 29)
+stopifnot(isTRUE(all.equal(features[1:100, ], extract_features(trace[1:100, ]))))
+targets <- future_targets(trace, 15)
+head(targets)
+tail(targets, 16) # Future targets beyond the trace remain NA.
+```
+
+# Chronological train, calibration and test folds
+
+```{r splits}
+folds <- temporal_split(nrow(trace))
+data.frame(fold = names(folds), first = sapply(folds, min), last = sapply(folds, max), samples = lengths(folds))
+stopifnot(max(folds$train) + 30 < min(folds$calibration))
+stopifnot(max(folds$calibration) + 30 < min(folds$test))
+```
+
+# Train probability and regression forests
+
+```{r train}
+system <- train_system(trace)
+save_system(system)
+system$health$evaluation_metrics
+```
+
+# Calibration, baselines and drift
+
+```{r evaluate}
+system$health$baseline_comparison
+system$health$drift_monitoring
+curve <- system$health$calibration_curve
+plot(sapply(curve, `[[`, "mean_predicted_probability"), sapply(curve, `[[`, "fraction_positive"),
+     xlim = c(0, 1), ylim = c(0, 1), pch = 19, xlab = "Predicted probability", ylab = "Observed frequency")
+abline(0, 1, lty = 2)
+```
+
+# Multi-horizon forecast and current anomaly
+
+```{r forecast}
+service <- new_service(system, trace)
+event <- step_stream(service, "jump-incident")
+event$prediction
+```
+
+# Approximate Shapley explanation
+
+```{r explain}
+sample <- latest_features(window_history(service$windows))
+explanation <- explain_features(system, sample)
+attributions <- do.call(rbind, lapply(explanation$all_attributions, as.data.frame))
+head(attributions, 10)
+stopifnot(abs(explanation$base_value + sum(attributions$shap_value) - explanation$predicted_risk) < 1e-8)
+```
+
+These approximate contributions explain raw forest probability, not calibrated
+probability. Correlated features complicate causal interpretation.
+
+# What-if mitigation
+
+```{r simulate}
+simulate_scenario(service, list()) # No action preserves baseline.
+simulate_scenario(service, list(reroute_traffic_pct = 25, enable_priority_queuing = TRUE))
+```
+
+# Conclusions to write in your lab record
+
+Compare the forest with persistence. Report Brier score, recall, false positives,
+RTT error and measured interval coverage. Explain limitations of synthetic traffic,
+distribution shift, correlated features and heuristic intervention transformations.
+Record package versions for reproducibility.
+
+```{r session}
+sessionInfo()
+```
