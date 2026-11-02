@@ -1,0 +1,37 @@
+---
+title: NetPredict
+description: Network congestion forecasting with R and a React dashboard.
+---
+
+NetPredict reads one-minute network telemetry and forecasts congestion at 5, 15 and 30 minutes. The dashboard separates current anomalies from future risk and lets you compare possible interventions.
+
+## Start the application
+
+From the repository root:
+
+```sh
+Rscript scripts/setup.R
+Rscript scripts/run_api.R
+```
+
+In another terminal:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173. The R API runs on port 8000. Its first start trains and saves the models.
+
+## Dashboard sections
+
+1. Live telemetry
+2. Predictive horizons
+3. Anomaly versus prediction
+4. Feature explanations
+5. What-if scenarios
+6. Model health and calibration
+7. Incident history
+
+The bundled trace is synthetic. Its scores are useful for the lab experiment, but do not establish real-world forecasting performance.

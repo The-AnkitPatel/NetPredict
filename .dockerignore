@@ -4,3 +4,9 @@
 models
 reports
 *.log
+frontend/node_modules
+frontend/dist
+output
+.playwright-cli
+docs-portal/node_modules
+docs-portal/.next

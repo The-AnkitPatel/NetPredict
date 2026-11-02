@@ -1,95 +1,90 @@
-# NetPredict — R Programming Lab
+# NetPredict
 
-An R application for network congestion forecasting, telemetry replay, explanations and mitigation experiments. This branch replaces the Python backend, React dashboard and Next.js documentation site with R modules, a Shiny dashboard, a Plumber API and an R Markdown lab notebook. No Python or Node.js runtime is needed.
-
-![R Shiny dashboard](docs/screenshots/r-dashboard.png)
+Network congestion forecasting with an R backend and the original React dashboard.
 
 ## Run locally
 
-Install R 4.3 or newer (RStudio is optional). Open `NetPredict.Rproj`, or open a terminal **in this repository root**:
+Requirements: R 4.3 or newer and Node.js 22.12 or newer.
+
+From the repository root:
 
 ```sh
 Rscript scripts/setup.R
-Rscript scripts/run_dashboard.R
-```
-
-Visit http://127.0.0.1:3838. The first launch trains models automatically; subsequent launches load `models/netpredict.rds`. Training may take a minute. Dependencies install into the ignored `.R-library` directory. If Windows cannot find Rscript, add your R installation's `bin` directory to PATH or use its full path.
-
-In RStudio, use:
-
-```r
-source("scripts/setup.R")
-shiny::runApp(".")
-```
-
-Optional REST server, in a second terminal:
-
-```sh
 Rscript scripts/run_api.R
 ```
 
-API: http://127.0.0.1:8000/api/v1/health · Swagger: http://127.0.0.1:8000/__docs__/
+In a second terminal:
 
-Each dashboard session has independent replay state. The REST server has its own state; dashboard controls do not advance the REST playhead.
+```sh
+cd frontend
+npm ci
+npm run dev
+```
 
-## Lab features
+Open http://localhost:5173. The frontend forwards `/api` requests to the R server on port 8000. The first backend launch trains the models and saves them under `models/`.
 
-- Replay the bundled seven-day synthetic trace, step one minute, jump to an incident or reset.
-- Explore 29 backward-looking instantaneous, rolling, slope, EWMA and congestion features.
-- Predict failure probability, RTT and packet loss at **5, 15 and 30 minutes**.
-- Compare Isolation Forest present-anomaly scores with calibrated future risk.
-- Explain raw model probability using approximate permutation Shapley contributions.
-- Compare rerouting, ingress shaping, buffer expansion and priority-queuing scenarios; search a bounded intervention grid.
-- Inspect chronological holdout metrics, reliability bins, PSI drift and three baseline models.
-- Log critical forecasts and match them to observations at the actual target timestamp.
-- Read host interface throughput on Windows/Linux without inventing missing queue or loss measurements.
+Open `NetPredict.Rproj` to work on the R code in RStudio. If Windows cannot find `Rscript`, add the R installation's `bin` directory to PATH.
 
-## Validation and analysis
+## Features
+
+- Replay one-minute telemetry, jump to congestion events and reset the timeline.
+- Forecast failure probability, RTT and packet loss at 5, 15 and 30 minutes.
+- Compare present anomalies with future risk.
+- Inspect Shapley feature contributions.
+- Test rerouting, traffic shaping, buffer capacity and priority queuing.
+- View calibration, baseline comparisons, drift and incident outcomes.
+- Read Windows or Linux interface throughput using the host-counter control.
+
+## Project structure
+
+| Directory | Contents |
+|---|---|
+| `frontend/` | React dashboard, styles and API client |
+| `R/` | Telemetry processing, models, API, replay and simulation |
+| `scripts/` | Setup, API launcher, training and checks |
+| `data/` | Bundled telemetry CSV files |
+| `tests/testthat/` | R tests |
+| `notebooks/` | R Markdown analysis |
+| `docs/` | API reference and lab guide |
+| `docs-portal/` | Documentation website |
+
+## Tests and training
 
 ```sh
 Rscript scripts/test.R
 Rscript scripts/train.R
 Rscript scripts/smoke_api.R
-Rscript scripts/smoke_dashboard.R
+npm --prefix frontend run build
 ```
 
-Training writes the model and `reports/model-health.json`. Unit/integration tests check leakage prevention, buffer isolation, input validation, model reload, explanation additivity, replay and intervention invariants. The HTTP smoke test starts and stops its own local API server.
+Training writes `models/netpredict.rds` and `reports/model-health.json`. Tests cover rolling features, chronological splits, validation, buffer isolation, saved models, explanations, replay and API requests.
 
-Open `notebooks/NetPredict_ML_Pipeline.Rmd` in RStudio and select **Knit**, or run:
+The notebook can be opened in RStudio or rendered from the repository root:
 
 ```r
 rmarkdown::render("notebooks/NetPredict_ML_Pipeline.Rmd", knit_root_dir = getwd())
 ```
 
-Rendering HTML requires Pandoc (included with RStudio). The R analysis chunks also run without Pandoc via `knitr::purl()` and `source()`.
-
-## Containers
+## Docker
 
 ```sh
 docker compose up --build
 ```
 
-Dashboard: port 3838. API: port 8000. Live counters inside a container describe the container network namespace. Local R execution is the primary verified lab setup; see `docs/VALIDATION.md` for checks actually performed.
+Dashboard: http://localhost:5173. API: http://localhost:8000. Host counters inside Docker describe the container's interfaces.
 
-## Repository map
+## Web hosting
 
-| Path | Purpose |
-|---|---|
-| `app.R` | Shiny dashboard and session logic |
-| `R/telemetry.R`, `R/features.R` | Trace generation, validation, bounded buffers, temporal features |
-| `R/models.R` | Training, calibration, forecasting, anomaly detection, explanation and evaluation |
-| `R/service.R`, `R/simulation.R` | Replay, cached predictions, incidents and interventions |
-| `R/api.R`, `R/collector.R` | Plumber routes and read-only OS counters |
-| `scripts/` | Dependency setup, launchers, training and tests |
-| `tests/testthat/` | R regression tests |
-| `data/` | Original CSV datasets preserved from the source repository |
-| `notebooks/` | R Markdown analysis |
-| `docs/` | Architecture, API, migration and lab instructions |
+The dashboard and documentation site can be built by their existing Vercel projects. The R API needs a separate R-capable host. Set `VITE_API_BASE_URL` to its `/api/v1` URL for a hosted dashboard, and allow the dashboard origin using the backend's `CORS_ORIGINS` setting. Without a reachable API, the dashboard shows a connection error instead of simulated fallback predictions.
 
-## Important interpretation
+To run the documentation locally: `cd docs-portal`, `npm ci`, then `npm run dev`.
 
-This is a synthetic-data learning project, not a validated production early-warning system. A horizon means **minutes**, so forecasting requires at least 30 consecutive one-minute samples from the requested interface. Synthetic incident detection performance does not establish real-world advance warning. Models can perform similarly to simple persistence; inspect the baseline comparison.
+## Models and data
 
-The R implementation intentionally uses `ranger` probability forests instead of LightGBM, and approximate permutation Shapley values instead of TreeSHAP. Model outputs will differ. See `docs/MIGRATION.md` for the full mapping, removed assumptions, and compatibility changes.
+The backend uses `ranger` probability forests, isotonic calibration, `isotree` anomaly detection and approximate permutation Shapley explanations. RTT intervals use held-out residual quantiles. Separate models are fitted for each forecast horizon.
 
-Original project: [The-AnkitPatel/NetPredict](https://github.com/The-AnkitPatel/NetPredict), by Ankit Patel and contributors. The original implementation remains in `main` and Git history; this migration is on `codex/r-language-migration`.
+Training, calibration and testing use chronological folds with a 30-minute gap to prevent future labels from crossing boundaries. Predictions require 30 consecutive one-minute samples per interface.
+
+The bundled data is synthetic. Compare the fitted model with the baseline results before drawing conclusions about early warning. What-if scenarios estimate model responses; they do not change network settings or establish causal effects. Host byte counters alone do not provide all the measurements required for forecasting.
+
+Branch: `rproject`. The original version remains on `main`.

@@ -1,6 +1,21 @@
 build_api <- function(service = new_service()) {
   api <- plumber::pr()
   collector <- new_collector()
+  origins <- trimws(strsplit(Sys.getenv("CORS_ORIGINS", ""), ",", fixed = TRUE)[[1]])
+  api <- plumber::pr_filter(api, "cors", function(req, res) {
+    origin <- req$HTTP_ORIGIN %||% ""
+    if (nzchar(origin) && origin %in% origins) {
+      res$setHeader("Access-Control-Allow-Origin", origin)
+      res$setHeader("Vary", "Origin")
+      res$setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+      res$setHeader("Access-Control-Allow-Headers", "Content-Type")
+    }
+    if (identical(req$REQUEST_METHOD, "OPTIONS")) {
+      res$status <- if (origin %in% origins) 204L else 403L
+      return(NULL)
+    }
+    plumber::forward()
+  })
   api <- plumber::pr_set_serializer(api, plumber::serializer_json(auto_unbox = TRUE, na = "null", digits = 8))
   api <- plumber::pr_set_error(api, function(req, res, err) {
     message(conditionMessage(err))
@@ -13,7 +28,16 @@ build_api <- function(service = new_service()) {
   add("GET", "/", function() list(service = "NetPredict R", version = "2.0.0", api_v1 = "/api/v1", docs = "/__docs__/"))
   add("GET", "/api/v1/health", function() list(status = "HEALTHY", system = "NetPredict R", version = "2.0.0",
     is_model_trained = TRUE, is_explainer_ready = TRUE, is_conformal_calibrated = TRUE))
-  add("GET", "/api/v1/health/model", function() service$system$health)
+  add("GET", "/api/v1/health/model", function() {
+    health <- service$system$health
+    health$evaluation_metrics <- lapply(health$evaluation_metrics, round, digits = 4)
+    health$baseline_comparison <- lapply(health$baseline_comparison, function(metrics) lapply(metrics, round, digits = 4))
+    bins <- health$calibration_curve
+    health$calibration_curve <- list(
+      bin_predicted_probs = unname(lapply(bins, function(bin) bin$mean_predicted_probability)),
+      bin_true_fractions = unname(lapply(bins, function(bin) bin$fraction_positive)))
+    health
+  })
   add("POST", "/api/v1/health/recalibrate", function() recalibrate_system(service))
   add("POST", "/api/v1/telemetry/ingest", function(req) {
     body <- jsonlite::fromJSON(req$postBody, simplifyVector = FALSE)

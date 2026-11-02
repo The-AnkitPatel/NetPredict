@@ -1,17 +1,16 @@
 services:
-  dashboard:
-    build: .
-    ports:
-      - "3838:3838"
-    environment:
-      HOST: 0.0.0.0
-      PORT: 3838
-    command: ["Rscript", "scripts/run_dashboard.R"]
-  api:
+  backend:
     build: .
     ports:
       - "8000:8000"
     environment:
       HOST: 0.0.0.0
       PORT: 8000
-    command: ["Rscript", "scripts/run_api.R"]
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

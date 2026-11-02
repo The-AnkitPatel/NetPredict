@@ -1,0 +1,28 @@
+---
+title: System Architecture
+description: The dashboard, R services and telemetry flow.
+---
+
+## Data flow
+
+Telemetry records enter the Plumber API and are validated before ingestion. Each device/interface has a separate history of up to 720 samples. Features use only current and past records.
+
+The R model service produces independent forecasts at 5, 15 and 30 minutes. The React dashboard reads these results through `/api/v1`. Vite proxies requests to port 8000 in development; nginx does the same in Docker.
+
+## R modules
+
+| Module | Responsibility |
+|---|---|
+| `telemetry.R` | Validation, trace loading and bounded interface buffers |
+| `features.R` | Rolling statistics, slopes, EWMA and interaction terms |
+| `models.R` | Training, prediction, calibration and explanations |
+| `service.R` | Replay state, prediction cache and incident history |
+| `simulation.R` | Intervention scenarios and policy search |
+| `collector.R` | Windows/Linux interface counters |
+| `api.R` | HTTP endpoints |
+
+## Time and state
+
+Forecasting requires at least 30 consecutive one-minute records. Duplicate and out-of-order timestamps are rejected. Read-only predictions do not append telemetry. Reset and incident jump rebuild history so unrelated timestamps are never combined.
+
+The API process owns its buffers and replay cursor. Browser clients connected to that process see the same replay. Cached predictions and incident entries are bounded to 500 each.

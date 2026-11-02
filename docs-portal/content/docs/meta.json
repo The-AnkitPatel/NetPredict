@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "index",
+    "student-build-journey",
+    "architecture",
+    "temporal-ml",
+    "anomaly-vs-prediction",
+    "explainability",
+    "what-if-simulation",
+    "api-reference"
+  ]
+}

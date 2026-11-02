@@ -4,6 +4,7 @@ root <- normalizePath(".")
 port <- httpuv::randomPort()
 process <- callr::r_bg(function(root, port) {
   setwd(root)
+  Sys.setenv(CORS_ORIGINS = "http://localhost:5173")
   source("R/bootstrap.R"); source("R/api.R")
   build_api()$run(host = "127.0.0.1", port = port)
 }, args = list(root, port), libpath = .libPaths(), stdout = "|", stderr = "|")
@@ -28,9 +29,19 @@ tryCatch({
     Sys.sleep(.5)
   }
   stopifnot(ready)
+  cors_handle <- curl::new_handle(customrequest = "OPTIONS")
+  curl::handle_setheaders(cors_handle, Origin = "http://localhost:5173", "Access-Control-Request-Method" = "POST")
+  preflight <- curl::curl_fetch_memory(paste0(base, "/api/v1/simulate"), cors_handle)
+  stopifnot(preflight$status_code == 204L,
+    grepl("Access-Control-Allow-Origin: http://localhost:5173", rawToChar(preflight$headers), ignore.case = TRUE))
   stopifnot(request("/")$status == 200L)
   prediction <- request("/api/v1/predict/horizons")
   stopifnot(prediction$status == 200L, length(prediction$body$horizons) == 3L)
+  health <- request("/api/v1/health/model")$body
+  stopifnot(is.list(health$calibration_curve$bin_predicted_probs),
+    length(health$calibration_curve$bin_predicted_probs) == length(health$calibration_curve$bin_true_fractions),
+    all(c("pr_auc", "f1_score", "false_negative_rate") %in% names(health$evaluation_metrics)))
+  for (metrics in health$baseline_comparison) stopifnot(is.numeric(metrics$pr_auc), is.numeric(metrics$f1_score))
   stopifnot(request(paste0("/api/v1/explain/", prediction$body$prediction_id))$status == 200L)
   for (path in c("telemetry/latest", "telemetry/history", "explain/latest", "health/model", "predict/incidents")) stopifnot(request(paste0("/api/v1/", path))$status == 200L)
   stopifnot(request("/api/v1/telemetry/latest?device_id=missing")$status == 404L)

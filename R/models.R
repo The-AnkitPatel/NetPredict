@@ -35,8 +35,15 @@ binary_metrics <- function(y, p) {
   precision <- tp / max(1, tp + fp); recall <- tp / max(1, tp + fn)
   n1 <- sum(y == 1); n0 <- sum(y == 0)
   auc <- if (n1 * n0 > 0) (sum(rank(p)[y == 1]) - n1 * (n1 + 1) / 2) / (n1 * n0) else NA_real_
+  order_idx <- order(p, decreasing = TRUE)
+  ends <- cumsum(rle(p[order_idx])$lengths)
+  positives <- cumsum(y[order_idx])[ends]
+  recall_curve <- positives / max(1, n1)
+  pr_auc <- sum(diff(c(0, recall_curve)) * positives / ends)
+  f1 <- 2 * precision * recall / max(1e-12, precision + recall)
   list(accuracy = mean(positive == y), precision = precision, recall = recall,
-    f1 = 2 * precision * recall / max(1e-12, precision + recall), roc_auc = auc, brier_score = mean((p - y)^2))
+    f1 = f1, f1_score = f1, pr_auc = pr_auc, false_negative_rate = fn / max(1, n1),
+    roc_auc = auc, brier_score = mean((p - y)^2))
 }
 psi <- function(reference, current) {
   breaks <- unique(c(-Inf, quantile(reference, seq(.1, .9, .1)), Inf))
@@ -82,7 +89,7 @@ train_system <- function(trace = load_trace(), trees = 120L) {
   groups <- split(seq_along(p), cut(p, breaks = seq(0, 1, .1), include.lowest = TRUE))
   curve <- lapply(groups[lengths(groups) > 0], function(i) list(mean_predicted_probability = mean(p[i]), fraction_positive = mean(y[te][i]), count = length(i)))
   drift <- c(queue_occupancy_psi = psi(x$queue_occupancy_pct[tr], x$queue_occupancy_pct[te]), rtt_psi = psi(x$rtt_ms[tr], x$rtt_ms[te]))
-  system <- list(version = 2L, feature_names = names(x), models = models, background = background,
+  system <- list(version = 3L, feature_names = names(x), models = models, background = background,
     anomaly_reference = anomaly_reference, split = split,
     training_fingerprint = unname(tools::md5sum("data/telemetry_trace.csv")),
     health = list(model_type = "R ranger probability forests + isotonic calibration",
@@ -105,7 +112,7 @@ load_system <- function(path = "models/netpredict.rds", trace = load_trace()) {
   if (file.exists(path)) {
     system <- readRDS(path)
     fingerprint <- unname(tools::md5sum("data/telemetry_trace.csv"))
-    if (identical(system$version, 2L) && identical(system$training_fingerprint, fingerprint)) return(attach_anomaly(system))
+    if (identical(system$version, 3L) && identical(system$training_fingerprint, fingerprint)) return(attach_anomaly(system))
   }
   system <- train_system(trace)
   save_system(system, path)

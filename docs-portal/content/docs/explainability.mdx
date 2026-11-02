@@ -1,0 +1,14 @@
+---
+title: Feature Explanations
+description: Approximate permutation Shapley values for network forecasts.
+---
+
+The explanation samples feature orderings and measures how each feature changes the model's raw probability from a training-background observation to the current sample.
+
+For each ordering, the changes add up to the prediction minus the background probability. Averaging these paths gives approximate Shapley contributions. The baseline plus all signed contributions equals the raw probability.
+
+Positive values increase predicted risk; negative values decrease it. Calibrated probability is a separate transformation and need not equal this sum.
+
+The implementation uses 24 permutations by default. These are approximate model explanations, not exact TreeSHAP values or proof of causation. Correlated telemetry features can share contributions.
+
+`/api/v1/explain/latest` explains the latest 15-minute prediction. A cached prediction can be explained by its ID.

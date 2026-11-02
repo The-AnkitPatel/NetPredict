@@ -1,0 +1,453 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  /* Base color mapping */
+  --color-fd-primary: hsl(163, 50%, 22%); /* Deep Pine Green */
+  --color-fd-primary-foreground: hsl(0, 0%, 98%);
+
+  --color-fd-background: hsl(160, 20%, 98%); /* Soft mist-tinted light background */
+  --color-fd-foreground: hsl(163, 40%, 10%);
+
+  --color-fd-card: hsl(0, 0%, 100%);
+  --color-fd-card-foreground: hsl(163, 40%, 12%);
+
+  --color-fd-popover: hsl(0, 0%, 100%);
+  --color-fd-popover-foreground: hsl(163, 40%, 12%);
+
+  --color-fd-border: hsl(163, 20%, 88%);
+  --color-fd-muted: hsl(163, 15%, 93%);
+  --color-fd-muted-foreground: hsl(163, 20%, 38%);
+
+  --color-fd-accent: hsl(163, 30%, 92%);
+  --color-fd-accent-foreground: hsl(163, 50%, 22%);
+
+  --color-fd-ring: hsl(163, 50%, 22%);
+
+  /* Status/Operational colors */
+  --color-brand: hsl(163, 48%, 15%);
+  --color-brand-subtle: hsl(163, 48%, 95%);
+  --color-success: hsl(152, 55%, 40%);
+  --color-warning: hsl(32, 65%, 48%);
+  --color-danger: hsl(3, 55%, 55%);
+}
+
+.dark, [data-theme='dark'] {
+  /* Monochrome AMOLED dark mode — true black + white/grey contrast, no brand green */
+  --color-fd-primary: hsl(0, 0%, 96%); /* near-white accent (active links, buttons) */
+  --color-fd-primary-foreground: hsl(0, 0%, 8%); /* black text on white accent */
+
+  --color-fd-background: hsl(0, 0%, 0%); /* true AMOLED black */
+  --color-fd-foreground: hsl(0, 0%, 96%); /* white text */
+
+  --color-fd-card: hsl(0, 0%, 4%); /* subtle elevation above black */
+  --color-fd-card-foreground: hsl(0, 0%, 96%);
+
+  --color-fd-popover: hsl(0, 0%, 5%);
+  --color-fd-popover-foreground: hsl(0, 0%, 96%);
+
+  --color-fd-border: hsl(0, 0%, 17%); /* neutral grey border */
+  --color-fd-muted: hsl(0, 0%, 9%); /* grey panel fill */
+  --color-fd-muted-foreground: hsl(0, 0%, 63%); /* grey secondary text */
+
+  --color-fd-accent: hsl(0, 0%, 14%); /* hover surface */
+  --color-fd-accent-foreground: hsl(0, 0%, 98%);
+
+  --color-fd-ring: hsl(0, 0%, 72%);
+
+  /* Neutral brand tokens; semantic status colors kept for meaning (badges/alerts) */
+  --color-brand: hsl(0, 0%, 90%);
+  --color-brand-subtle: hsl(0, 0%, 10%);
+  --color-success: hsl(152, 55%, 46%);
+  --color-warning: hsl(38, 70%, 55%);
+  --color-danger: hsl(3, 72%, 60%);
+}
+
+html {
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+
+:is(h1, h2, h3, h4, h5, h6)[id],
+.prose :is(h1, h2, h3, h4, h5, h6),
+[id] {
+  scroll-margin-top: 5rem !important;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+/* Custom premium design additions */
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-fd-foreground);
+}
+.prose pre {
+  background-color: var(--color-fd-muted) !important;
+  border: 1px solid var(--color-fd-border) !important;
+}
+
+/* Force square corners globally on all UI elements (except theme toggle pill) */
+*, *::before, *::after {
+  border-radius: 0px !important;
+}
+
+.theme-toggle-pill, .theme-toggle-pill * {
+  border-radius: 9999px !important;
+}
+
+.theme-toggle-pill {
+  border: 1px solid var(--color-fd-border) !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Remove background and outer box borders except top divider from the sidebar theme container */
+aside#nd-sidebar div[class*="border"][class*="bg-fd-secondary"],
+aside#nd-sidebar div.flex.text-fd-muted-foreground.items-center {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-top: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove white light / gradient overlay mask at bottom of sidebar */
+aside#nd-sidebar div.pointer-events-none.absolute {
+  display: none !important;
+}
+
+/* Replace sidebar & mobile drawer toggle icons with double chevron arrows */
+button[aria-label="Collapse Sidebar"] svg,
+button[aria-label="Toggle Sidebar"] svg,
+button[aria-label="Open Sidebar"] svg,
+button[aria-label="Close Sidebar"] svg,
+button[aria-label="Open Menu"] svg,
+button[aria-label="Close Menu"] svg,
+button[aria-label="Toggle Menu"] svg,
+header button[aria-label*="Sidebar"] svg,
+header button[aria-label*="Menu"] svg,
+header button[aria-label*="Sidebar"] svg,
+div[role="dialog"] button[aria-label*="Close"] svg,
+[data-sidebar-toggle] svg {
+  display: none !important;
+}
+
+button[aria-label="Collapse Sidebar"]::after,
+button[aria-label="Toggle Sidebar"]::after,
+button[aria-label="Open Sidebar"]::after,
+button[aria-label="Close Sidebar"]::after,
+button[aria-label="Open Menu"]::after,
+button[aria-label="Close Menu"]::after,
+button[aria-label="Toggle Menu"]::after,
+header button[aria-label*="Sidebar"]::after,
+header button[aria-label*="Menu"]::after,
+div[role="dialog"] button[aria-label*="Close"]::after,
+[data-sidebar-toggle]::after {
+  content: "";
+  display: inline-block;
+  width: 1.45rem !important;
+  height: 1.45rem !important;
+  background-color: currentColor;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
+  mask-size: contain;
+  -webkit-mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-position: center;
+}
+
+/* Increase size of Search icon in header */
+header button[aria-label*="Search"] svg,
+button[aria-label*="Search"] svg,
+button[aria-label="Search"] svg,
+[data-search] svg {
+  width: 1.45rem !important;
+  height: 1.45rem !important;
+}
+
+/* Chevron direction for opening vs closing states */
+button[aria-label="Collapse Sidebar"][data-collapsed="true"]::after,
+button[aria-label="Open Sidebar"]::after,
+button[aria-label="Open Menu"]::after,
+header button[aria-label*="Sidebar"][aria-expanded="false"]::after,
+header button[aria-label*="Menu"][aria-expanded="false"]::after {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 17 5-5-5-5'/%3E%3Cpath d='m13 17 5-5-5-5'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 17 5-5-5-5'/%3E%3Cpath d='m13 17 5-5-5-5'/%3E%3C/svg%3E");
+}
+
+button[aria-label="Close Sidebar"]::after,
+button[aria-label="Close Menu"]::after,
+div[role="dialog"] button[aria-label*="Close"]::after,
+header button[aria-label*="Sidebar"][aria-expanded="true"]::after,
+header button[aria-label*="Menu"][aria-expanded="true"]::after {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m11 17-5-5 5-5'/%3E%3Cpath d='m18 17-5-5 5-5'/%3E%3C/svg%3E");
+}
+
+/* Remove background color, border, and outline from sidebar & mobile dialog trigger buttons */
+button[aria-label="Collapse Sidebar"],
+button[aria-label="Open Sidebar"],
+button[aria-label="Close Sidebar"],
+button[aria-label="Toggle Sidebar"],
+button[aria-label="Open Menu"],
+button[aria-label="Close Menu"],
+button[aria-label="Toggle Menu"],
+header button[aria-label*="Sidebar"],
+header button[aria-label*="Menu"],
+div[role="dialog"] button[aria-label*="Close"],
+div:has(> button[aria-label="Collapse Sidebar"]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Hide Next.js / Fumadocs powered-by branding links in footer and layouts */
+a[href*="nextjs"], a[href*="fumadocs"], [class*="footer-logo"], [class*="branding"] {
+  display: none !important;
+}
+
+/* Mermaid SVG scaling, unconstrained width, and interactive drag cursor */
+.mermaid,
+[data-mermaid],
+figure svg {
+  user-select: none !important;
+}
+
+.mermaid svg,
+[data-mermaid] svg {
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+/* Left Navigation Sidebar Collapsible Folder & Active Accent Bar */
+aside:not([data-toc]) *:before,
+#nd-sidebar *:before,
+div[data-sidebar] *:before {
+  content: none !important;
+  display: none !important;
+  background: transparent !important;
+}
+
+aside:not([data-toc]) div,
+aside:not([data-toc]) div[role="group"],
+#nd-sidebar div,
+#nd-sidebar div[role="group"] {
+  border-left: none !important;
+  border-inline-start: none !important;
+  border-left-color: transparent !important;
+  border-inline-start-color: transparent !important;
+  border-left-width: 0 !important;
+  border-inline-start-width: 0 !important;
+}
+
+/* Active Left Sidebar Link - Single Leftmost Accent Bar */
+aside:not([data-toc]) a[data-active="true"],
+aside:not([data-toc]) a[aria-current="page"],
+#nd-sidebar a[data-active="true"],
+#nd-sidebar a[aria-current="page"],
+div[data-sidebar] a[data-active="true"],
+div[data-sidebar] a[aria-current="page"] {
+  position: relative !important;
+  border-left: 3px solid var(--color-fd-primary) !important;
+  border-inline-start: 3px solid var(--color-fd-primary) !important;
+  background-color: rgba(35, 113, 88, 0.08) !important;
+  color: var(--color-fd-primary) !important;
+  font-weight: 600 !important;
+  border-radius: 0 !important;
+  padding-left: 0.75rem !important;
+}
+
+/* Table of Contents ("On this page" right sidebar) Reset */
+[data-toc] a,
+#nd-toc a,
+.fd-toc a,
+aside[data-toc] a {
+  border-left: none !important;
+  border-inline-start: none !important;
+  background-color: transparent !important;
+}
+
+/* Adjust position of the copy button inside code blocks to be slightly lower */
+figure.shiki .absolute.top-3 {
+  top: 1.25rem !important;
+}
+
+.fd-layout-width {
+  max-width: 1440px !important;
+}
+
+/* Remove background color and border from all inline code tags across the app */
+:not(pre) > code,
+code:not(pre code),
+.prose code:not(pre code),
+td code,
+th code,
+li code,
+p code {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  padding-left: 0.1rem !important;
+  padding-right: 0.1rem !important;
+  font-weight: 500;
+}
+
+/* Custom scrollbars for clean code look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-fd-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-fd-muted-foreground);
+}
+
+/* Custom Mermaid Theme Styling to match Mist/AMOLED inside DiagramFrame */
+.mermaid,
+[class*="mermaid"],
+[data-fumadocs-mermaid] {
+  border: none !important;
+  border-width: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Hide inner duplicate fumadocs-mermaid controls */
+.mermaid button,
+[class*="mermaid"] button,
+[data-fumadocs-mermaid] button,
+div[class*="mermaid"] button {
+  display: none !important;
+}
+
+/* Explicitly preserve DiagramFrame toolbar controls */
+figure.not-prose figcaption button {
+  display: flex !important;
+}
+
+.mermaid svg, [class*="mermaid"] svg {
+  min-width: 600px !important; /* Prevent shrinking to microscopic sizes */
+  max-width: none !important;
+  height: auto !important;
+  background: transparent !important;
+}
+
+/* Nodes Styling */
+.mermaid svg .node rect,
+.mermaid svg .node circle,
+.mermaid svg .node polygon,
+.mermaid svg .node path,
+.mermaid svg .label-container {
+  fill: var(--color-fd-muted) !important;
+  stroke: var(--color-fd-border) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Node Text/Labels Styling */
+.mermaid svg .node .nodeLabel,
+.mermaid svg .node text,
+.mermaid svg .label foreignObject,
+.mermaid svg .label foreignObject *,
+.mermaid svg .label foreignObject span {
+  fill: var(--color-fd-foreground) !important;
+  color: var(--color-fd-foreground) !important;
+  font-family: inherit !important;
+  font-weight: 500 !important;
+}
+
+/* Edge Lines */
+.mermaid svg .edgePath .path {
+  stroke: var(--color-fd-muted-foreground) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Arrows/Markers */
+.mermaid svg .marker,
+.mermaid svg marker path {
+  fill: var(--color-fd-muted-foreground) !important;
+  stroke: var(--color-fd-muted-foreground) !important;
+}
+
+/* Subgraphs / Cluster Boxes */
+.mermaid svg .cluster rect {
+  fill: var(--color-fd-secondary) !important;
+  stroke: var(--color-fd-border) !important;
+  stroke-width: 1.5px !important;
+  stroke-dasharray: 4,4 !important;
+}
+
+/* Subgraph/Cluster Labels */
+.mermaid svg .cluster text,
+.mermaid svg .cluster span {
+  fill: var(--color-fd-foreground) !important;
+  color: var(--color-fd-foreground) !important;
+  font-family: inherit !important;
+  font-weight: 600 !important;
+}
+
+/* Remove background color and border/outline from page action buttons (Copy Markdown, Open) and increase font size */
+.page-actions-container button {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: 0.875rem !important;
+}
+
+.page-actions-container button svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+.page-actions-container button:hover {
+  background-color: var(--color-fd-accent) !important;
+  color: var(--color-fd-accent-foreground) !important;
+}
+
+/* Sidebar section headings: span full width and draw a divider line above each
+   section (except the first) so the numbered groups are clearly separated.
+   Targets fumadocs' sidebar separators by their unique utility-class tokens. */
+p[class~="mt-6"][class~="first:mt-0"][class~="empty:mb-0"] {
+  display: flex;
+  margin-top: 1.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--color-fd-border);
+  font-weight: 600;
+  color: var(--color-fd-muted-foreground);
+}
+
+p[class~="mt-6"][class~="first:mt-0"][class~="empty:mb-0"]:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}

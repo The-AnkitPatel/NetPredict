@@ -5,6 +5,6 @@ COPY scripts/setup.R scripts/setup.R
 RUN Rscript scripts/setup.R
 COPY . .
 RUN Rscript scripts/train.R
-ENV HOST=0.0.0.0 PORT=3838
-EXPOSE 3838 8000
-CMD ["Rscript", "scripts/run_dashboard.R"]
+ENV HOST=0.0.0.0 PORT=8000
+EXPOSE 8000
+CMD ["Rscript", "scripts/run_api.R"]

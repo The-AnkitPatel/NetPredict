@@ -1,0 +1,15 @@
+---
+title: Anomaly vs Prediction
+description: Current abnormality and future congestion risk answer different questions.
+---
+
+| | Anomaly detection | Forecasting |
+|---|---|---|
+| Question | Is the current sample unusual? | What is the risk at a future timestamp? |
+| Model | Isolation Forest (`isotree`) | Calibrated probability forest (`ranger`) |
+| Inputs | Current telemetry | Current telemetry and backward-looking trends |
+| Output | Anomaly score | 5, 15 and 30 minute failure probabilities |
+
+An unusual sample does not necessarily imply an upcoming failure. A rising trend may increase future risk before the current sample becomes an anomaly.
+
+The models are fitted on the training fold only. Calibration and test observations are not used to fit the anomaly detector.

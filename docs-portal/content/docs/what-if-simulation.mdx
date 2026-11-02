@@ -1,0 +1,19 @@
+---
+title: What-If Simulation
+description: Compare estimated interventions without changing network settings.
+---
+
+The scenario service transforms a copy of the telemetry history, recomputes all features and passes them through the same fitted models.
+
+## Controls
+
+- Reroute a percentage of traffic to another path.
+- Apply ingress rate limiting.
+- Increase buffer capacity.
+- Enable priority queuing.
+
+Zero intervention returns the original prediction. Other scenarios report baseline and counterfactual risk, RTT and queue occupancy. The original telemetry remains unchanged.
+
+The prescription endpoint searches a bounded grid for the lowest-cost candidate with risk below 25%. If no candidate meets that threshold, it reports that no feasible policy was found.
+
+These are steady-state model estimates. They do not configure equipment or establish that an intervention will cause the predicted outcome on a real network.

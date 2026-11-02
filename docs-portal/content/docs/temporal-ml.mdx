@@ -1,0 +1,24 @@
+---
+title: Temporal Models
+description: Random forests, calibration and chronological evaluation.
+---
+
+## Features and targets
+
+The pipeline computes 29 features: raw metrics, 5-minute and 15-minute summaries, lagged slopes, exponentially weighted means and congestion interactions. Targets describe conditions at exactly 5, 15 or 30 minutes ahead. Unobserved future targets remain missing.
+
+## Chronological split
+
+The trace is split at 65% and 80%. A 30-minute gap before each boundary prevents training or calibration labels from reaching into the next fold. The final 30 observations are excluded from evaluation.
+
+## Forecasting
+
+Each horizon has a `ranger` probability forest plus separate RTT and packet-loss regressors. Isotonic regression calibrates probabilities on the calibration fold. The model uses 120 trees and seed 42 by default.
+
+RTT intervals use absolute residual quantiles from the calibration fold, targeting 90% marginal coverage. Time dependence and drift can reduce observed coverage; report the measured holdout result.
+
+## Evaluation
+
+Compare precision, recall, F1, average precision (PR-AUC), ROC-AUC and Brier score with logistic regression, a moving-average threshold and persistence. Reliability bins show predicted probability against observed failure frequency. PSI compares feature distributions between training and test folds.
+
+Run `Rscript scripts/train.R` to save models and the model-health report.

@@ -43,3 +43,12 @@ testthat::test_that("isotonic regression handles ties, constants and monotonicit
   testthat::expect_equal(calibrate_prob(fit_isotonic(rep(.2, 3), c(0, 0, 1)), c(0, 1)), rep(1 / 3, 2))
   testthat::expect_equal(conformal_quantile(1:9, rep(0, 9)), 9)
 })
+testthat::test_that("dashboard metrics handle tied scores and missed failures", {
+  tied <- binary_metrics(c(1, 0), c(.5, .5))
+  testthat::expect_equal(tied$pr_auc, .5)
+  perfect <- binary_metrics(c(1, 0, 1, 0), c(.9, .2, .8, .1))
+  testthat::expect_equal(perfect$pr_auc, 1)
+  testthat::expect_equal(perfect$f1_score, 1)
+  missed <- binary_metrics(c(1, 0), c(.2, .1))
+  testthat::expect_equal(missed$false_negative_rate, 1)
+})

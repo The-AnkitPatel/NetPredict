@@ -15,3 +15,9 @@ desktop.ini
 output/
 .playwright-cli/
 Rplots.pdf
+node_modules/
+frontend/dist/
+frontend/.vite/
+docs-portal/.next/
+docs-portal/tsconfig.tsbuildinfo
+docs-portal/.source/
