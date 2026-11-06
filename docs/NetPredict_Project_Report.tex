@@ -1,0 +1,804 @@
+% =====================================================================
+%  NetPredict — Complete Project Report & Interview Guide
+%  Author: Ankit Kumar Patel
+%  Compile: pdflatex (run twice) or drop into Overleaf (A4)
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{microtype}
+\usepackage[hidelinks,colorlinks=true,linkcolor=linknavy,urlcolor=linknavy]{hyperref}
+\Urlmuskip=0mu plus 1mu\relax
+\makeatletter
+\g@addto@macro\UrlBreaks{\do\-\do\_\do\/}
+\makeatother
+
+% ---- colours -------------------------------------------------------
+\definecolor{linknavy}{HTML}{1A4E8A}
+\definecolor{accent}{HTML}{1A4E8A}
+\definecolor{soft}{HTML}{EEF3FA}
+\definecolor{warnbg}{HTML}{FFF4E5}
+\definecolor{codebg}{HTML}{F5F7FA}
+\definecolor{greydk}{HTML}{444444}
+
+% ---- headers / footers --------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\small\textcolor{greydk}{NetPredict — Project Report \& Interview Guide}}
+\rhead{\small\textcolor{greydk}{Ankit Kumar Patel}}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+% ---- listings ------------------------------------------------------
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{soft},
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=4pt,
+  framexleftmargin=2pt,
+  aboveskip=6pt,belowskip=6pt
+}
+
+% ---- a simple "note" box (no exotic packages) ----------------------
+\newcommand{\note}[1]{%
+  \par\vspace{3pt}\noindent
+  \colorbox{soft}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small #1}}%
+  \par\vspace{3pt}}
+\newcommand{\warn}[1]{%
+  \par\vspace{3pt}\noindent
+  \colorbox{warnbg}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small #1}}%
+  \par\vspace{3pt}}
+
+\setlist{itemsep=1pt,topsep=3pt}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\emergencystretch}{3em}
+\newcommand{\pf}[1]{\nolinkurl{#1}}
+
+% small Q/A helpers
+\newcommand{\Q}[1]{\vspace{4pt}\noindent\textbf{Q. #1}\par\nopagebreak}
+\newcommand{\A}[1]{\noindent\textit{A.} #1\par}
+
+\title{\vspace{-1.2cm}\textbf{\Large NetPredict}\\[2pt]
+\large Complete Project Report \& Interview Preparation Guide\\[6pt]
+\normalsize A predictive early-warning system for network congestion}
+\author{Ankit Kumar Patel}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+\noindent This document explains the \textbf{NetPredict} project end to end, in plain language.
+It covers what the project is, \emph{why} it was chosen, how the data was \emph{generated},
+how it was cleaned, which features were engineered, which models were trained and why,
+how uncertainty and explainability were added, and what lives on \textbf{Hugging Face} and
+\textbf{Kaggle}. It finishes with a glossary, a list of likely \textbf{cross-questions} a data-analytics
+reviewer may ask (with answers), and an honest \textbf{``be careful about this''} section so there are
+no surprises in a viva or interview. Read it once fully; then revise the glossary and the Q\&A.
+\end{abstract}
+
+\tableofcontents
+\vspace{6pt}
+\hrule
+
+% =====================================================================
+\section{One-paragraph summary (say this first)}
+% =====================================================================
+\noindent\emph{``NetPredict is a predictive early-warning system for computer networks. Normal monitoring
+tools (Datadog, Zabbix, PRTG) are \textbf{reactive} --- they alert you \emph{after} packets have already
+dropped. NetPredict is \textbf{proactive}: it reads live network signals (queue fill, latency, jitter,
+loss), measures how fast they are rising, and forecasts the risk of congestion \textbf{5, 15 and 30 minutes
+in advance}. On top of the forecast it adds three things that make it trustworthy: calibrated probabilities,
+mathematically guaranteed uncertainty intervals (conformal prediction), and per-alert root-cause
+explanations (SHAP). It is a full-stack app --- a Python/FastAPI backend, a React ``cockpit'' dashboard,
+a documentation portal, plus published models, datasets and a live demo on Hugging Face.''}
+
+\note{\textbf{30-second version for a non-technical examiner:} ``Think of a highway. Old monitoring tells
+you after a 10-car pile-up. NetPredict notices the cars bunching up and warns you 15 minutes before the jam,
+so engineers can reroute traffic before users feel anything.''}
+
+% =====================================================================
+\section{Why I chose this project (the motivation story)}
+% =====================================================================
+This is the ``why'' an examiner always asks. The honest, memorable version from the project's own dev diary:
+
+\begin{itemize}
+  \item \textbf{Personal pain point.} On the campus/hostel LAN, whenever someone pulled a large dataset or
+  torrented, everyone else's SSH froze, voice calls turned robotic, and game ping jumped from 14\,ms to
+  1800\,ms. This is a classic problem called \textbf{bufferbloat}.
+  \item \textbf{Monitoring was useless.} Traditional SNMP polling runs every 30--60 seconds. By the time it
+  said ``utilisation 98\%'', the queue had \emph{already} overflowed and dropped packets. The alarm arrived
+  \emph{after} the damage.
+  \item \textbf{The driving question.} ``Why detect a disaster \emph{after} it happens? Why not \emph{predict}
+  the crash 5, 15 or 30 minutes early?'' --- that question became NetPredict.
+  \item \textbf{Wanted something real, not another CRUD-over-an-LLM project.} The goal was to touch
+  ``bare metal and mathematical reality'' --- queuing theory, kernel telemetry, time-series ML ---
+  the kind of problem hyperscaler SRE teams (Cloudflare, Meta, Google) actually face.
+\end{itemize}
+
+\note{\textbf{Why it is a good data-analytics project:} it is a full analytics lifecycle --- messy raw data
+$\rightarrow$ cleaning $\rightarrow$ feature engineering $\rightarrow$ honest validation $\rightarrow$
+modelling $\rightarrow$ uncertainty $\rightarrow$ explainability $\rightarrow$ a decision/``what-if'' tool
+$\rightarrow$ deployment. That is exactly the story a reviewer wants to see.}
+
+% =====================================================================
+\section{The problem domain in simple words}
+% =====================================================================
+\subsection{What is bufferbloat?}
+Routers and switches have memory buffers (queues) that hold packets waiting their turn to be sent.
+If buffers are too big and traffic exceeds the link's capacity, packets are not dropped immediately ---
+they \emph{sit} in the queue for a long time. This drives round-trip time (RTT, i.e.\ latency) from a
+healthy $\sim$15\,ms up to hundreds or thousands of ms, \emph{before} any packet is actually lost.
+High latency with no loss yet = bufferbloat.
+
+\subsection{The key insight: the delay gradient $\tfrac{dRTT}{dt}$}
+The project's core idea is that \textbf{the rate of change of latency is a leading indicator}.
+Using simple fluid/queuing physics: if the arrival rate $\lambda(t)$ exceeds link capacity $C$, the queue
+grows at rate $\tfrac{dQ}{dt}=\lambda(t)-C$, and latency rises as
+\[
+\frac{dRTT}{dt}=\frac{1}{C}\big(\lambda(t)-C\big)=\rho(t)-1,
+\qquad \rho=\frac{\lambda}{\mu}\ \text{(traffic intensity / utilisation)}.
+\]
+So a \emph{positive} slope means the queue is filling and a tail-drop ``cliff'' is coming. NetPredict watches
+this slope, not just the raw level. In the diary's words: \emph{``the gradient is the leading indicator;
+packet drop is merely the funeral notice.''}
+
+\subsection{Reactive vs predictive (the headline contrast)}
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{4.2cm}X@{}}
+\toprule
+\textbf{Traditional monitoring} & Alerts \emph{after} packets drop / buffer overflows (lagging). \\
+\textbf{NetPredict} & Forecasts risk 5/15/30 min \emph{ahead} from trends, so engineers can reroute, rate-limit, or add buffer first. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% =====================================================================
+\section{System architecture (the big picture)}
+% =====================================================================
+NetPredict is a full-stack system, not just a notebook.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{3.6cm}X@{}}
+\toprule
+\textbf{Layer} & \textbf{What it is} \\
+\midrule
+Backend & Python 3.12 + \textbf{FastAPI}. ``Hexagonal'' (ports \& adapters) design: data collectors, a sliding-window state buffer, feature extraction, ML models, and REST API routers are cleanly separated. \\
+Frontend & \textbf{React 19 + TypeScript + Vite} ``cockpit'' dashboard (7 sections). Also has a client-side fallback engine so it runs free in a browser with no backend. \\
+Docs portal & \textbf{Next.js} documentation site (Fumadocs) + an Obsidian knowledge vault. \\
+Packaging & \textbf{Docker Compose} to run backend + frontend together. \\
+Published & Models + datasets + a live Gradio demo on \textbf{Hugging Face}; a \textbf{Kaggle} notebook. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Data plane (how a reading flows through the system)}
+\begin{enumerate}
+  \item \textbf{Ingest} a telemetry record (bandwidth, queue, RTT, jitter, loss, \dots) from one of three
+  sources: a Linux \textbf{eBPF} kernel probe, a cross-platform \textbf{psutil} collector (reads your real
+  NIC counters + measures live socket RTT to 1.1.1.1:53 / 8.8.8.8:53), or a \textbf{synthetic} trace.
+  \item \textbf{Sliding window buffer:} a thread-safe ring buffer, \texttt{collections.deque(maxlen=720)} per
+  interface (= 12 hours of 1-minute ticks). $O(1)$ append/evict, bounded memory, no GC stalls.
+  \item \textbf{Causal feature extractor:} turns the window into rolling/slope/EWMA features
+  (strictly backward-looking --- no peeking at the future).
+  \item \textbf{Two decoupled ML engines run in parallel:}
+  Stage 1 = Isolation Forest (``what is abnormal \emph{now}?''),
+  Stage 2 = multi-horizon LightGBM (``what fails \emph{next}, at T+5/15/30?'').
+  \item \textbf{Trust layer:} TreeSHAP explains each alert; conformal predictor adds a 90\% uncertainty band.
+  \item \textbf{Action layer:} a counterfactual ``what-if'' simulator lets an operator test a fix (reroute/rate-limit/bigger buffer) \emph{before} touching real switches.
+\end{enumerate}
+
+% =====================================================================
+\section{The dataset --- how it was generated (most important section)}
+% =====================================================================
+\warn{\textbf{Be clear and honest about this in an interview.} The training data is \textbf{synthetic}
+(computer-generated with a physics-grounded simulator), \emph{not} captured from a real production network.
+This is a \emph{strength}, not a weakness, if you explain it well: synthetic data gives you exact ground-truth
+labels, full control over rare failure events, and perfect reproducibility (fixed random seed). Say it
+plainly --- do not claim it is real captured traffic.}
+
+\subsection{What the generator does (GitHub backend dataset)}
+File: \texttt{backend/app/services/dataset\_loader.py}, function
+\texttt{generate\_high\_fidelity\_network\_trace()}. It builds a \textbf{7-day, 1-minute} trace =
+$7\times1440 = \mathbf{10{,}080}$ rows, with \texttt{np.random.seed(42)} (reproducible), for one
+\texttt{core-router-alpha}, interface \texttt{xe-0/0/1}, starting 2026-09-01. Step by step:
+
+\begin{enumerate}
+  \item \textbf{Daily (diurnal) traffic cycle.} A cosine wave gives a realistic day/night pattern ---
+  trough at 04:00, peak at 16:00:
+  \[ \text{diurnal}=0.5\big(1-\cos(2\pi(h-4)/24)\big),\quad
+     \text{util}=25+45\cdot\text{diurnal}+\mathcal{N}(0,3.5),\ \text{clipped }[10,95]\%. \]
+  \item \textbf{Throughput} tied to utilisation on a 10\,Gbps link:
+  $\text{throughput}=\tfrac{\text{util}}{100}\times10000+\text{noise}$.
+  \item \textbf{Queue occupancy} (bufferbloat core): builds once utilisation passes $\sim$40\%:
+  $q=\max(0,(u-40)\times1.2)+\text{Exp}(1.5)$.
+  \item \textbf{Latency from queue (quadratic blow-up):}
+  $RTT=14+(q/100)^2\times120+\text{noise}$, floored at 11\,ms. This reproduces the bufferbloat curve.
+  \item \textbf{Packet loss / discards / retransmits} switch on sharply only when the queue passes 85\%:
+  $\text{loss}=((q-85)/15)^{1.8}\times8.5+\text{Exp}(0.4)$; otherwise near zero. This is the ``cliff''.
+  \item \textbf{Nine scripted incidents} are injected over the week (microburst surge, bufferbloat collapse,
+  BGP reroute storm, interface CRC drop, memory-leak exhaustion) so the data contains realistic, labelled failures.
+  \item \textbf{CPU / memory / BGP-flap} signals are derived from utilisation, queue and incidents.
+  \item \textbf{Ground-truth labels (the targets):} an event is ``severe'' if
+  (queue$>$80\% OR loss$>$1.5\% OR RTT$>$65\,ms). Then the \emph{future} labels are made by looking ahead:
+  \texttt{target\_t5/t15/t30} = ``is it severe 5/15/30 minutes from now?'' and
+  \texttt{future\_rtt\_t15}, \texttt{future\_loss\_t15} are the actual future values (via a time shift).
+\end{enumerate}
+
+\note{\textbf{``MAWI/CAIDA calibrated'' --- what that honestly means.} The generator was \emph{designed to
+resemble} the statistical shape of well-known public traffic traces (MAWI, CAIDA) --- diurnal cycles, heavy-tailed
+bursts, queue physics. It does \emph{not} load real MAWI/CAIDA files. If asked, say: ``It's a physics- and
+pattern-calibrated \emph{simulator} inspired by MAWI/CAIDA characteristics.''}
+
+\subsection{Schema of the GitHub dataset (12 signals + labels)}
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{3.6cm}p{2.1cm}X@{}}
+\toprule
+\textbf{Column} & \textbf{Type/Unit} & \textbf{Meaning} \\
+\midrule
+\texttt{timestamp} & datetime & 1-minute grid \\
+\texttt{device\_id},\ \texttt{interface\_id} & string & which router/port \\
+\texttt{bandwidth\_util\_pct} & \% & link load \\
+\texttt{throughput\_mbps} & Mbps & actual data rate \\
+\texttt{rtt\_ms} & ms & latency (round-trip time) \\
+\texttt{rtt\_jitter\_ms} & ms & latency stability \\
+\texttt{queue\_occupancy\_pct} & \% & buffer fill (bufferbloat) \\
+\texttt{packet\_loss\_pct} & \% & dropped packets \\
+\texttt{tcp\_retrans\_rate} & /s & TCP strain \\
+\texttt{interface\_discards\_sec} & /s & hardware tail-drops \\
+\texttt{crc\_errors\_sec} & /s & physical/fibre errors \\
+\texttt{cpu\_util\_pct},\ \texttt{memory\_util\_pct} & \% & host saturation \\
+\texttt{bgp\_flap\_count} & int & routing instability \\
+\texttt{target\_t5/t15/t30} & 0/1 & \textbf{labels}: severe in 5/15/30 min \\
+\texttt{future\_rtt\_t15},\ \texttt{future\_loss\_t15} & ms, \% & \textbf{labels}: future values \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\warn{\textbf{Class imbalance (expect this question).} Only about \textbf{2.8\%} of rows are positive for
+\texttt{target\_t15}. Failures are \emph{rare}. That is why plain accuracy is misleading and why we use
+PR-AUC, ROC-AUC, Brier score, and \texttt{class\_weight="balanced"}.}
+
+% =====================================================================
+\section{Data cleaning pipeline (the analytics ``before/after'')}
+% =====================================================================
+The notebook starts from a deliberately \textbf{dirty} file,
+\texttt{raw\_telemetry\_trace.csv} ($\approx$10{,}122 rows), which has real-world style defects injected on
+purpose so the cleaning step is meaningful. Counts measured in the raw file:
+
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}Xrp{6.4cm}@{}}
+\toprule
+\textbf{Defect (before)} & \textbf{Count} & \textbf{Fix applied} \\
+\midrule
+Duplicate timestamps & 42 & sort by time, drop duplicates \\
+Missing values (NaN) & 179 & forward-fill then back-fill (\texttt{ffill/bfill}) \\
+Negative RTT error codes ($-999$) & 17 & set to NaN, then interpolate \\
+Buffer overflow spikes ($>$100\%) & 15 & set to NaN (32-bit counter wrap-around), clamp 0--100 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Result:} a clean \texttt{telemetry\_trace.csv} with exactly \textbf{10{,}080} rows, no NaNs, no
+duplicates, all percentages in $[0,100]$, RTT $\geq 1$\,ms. The cleaning logic (in order): chronological sort
+(fixes out-of-order UDP arrivals) $\rightarrow$ de-duplicate $\rightarrow$ replace sensor error codes with NaN
+$\rightarrow$ time-series imputation $\rightarrow$ physical-range clamping.
+
+\note{\textbf{Why ffill/bfill (not mean/median)?} Network state is continuous and autocorrelated in time ---
+the router's condition one minute ago is the best estimate of a missing reading now. Mean/median imputation
+would erase the time structure. Forward-fill respects causality (uses the past), and a final back-fill only
+patches a possible gap at the very start.}
+
+% =====================================================================
+\section{Feature engineering (turning signals into predictors)}
+% =====================================================================
+Raw gauges are not enough; the model needs \emph{trend} and \emph{interaction} features. The notebook adds
+\textbf{17} engineered columns (the production backend extractor computes a richer set; see the caveat on
+counts below). Grouped:
+
+\begin{itemize}
+  \item \textbf{Rolling windows} (short 5-min, medium 15-min): means, standard deviations, maxima, sums of
+  RTT, queue, utilisation, loss, discards. These capture microbursts and sustained pressure.
+  \item \textbf{Rate-of-change / slopes} (the delay-gradient idea):
+  \texttt{rtt\_slope\_5m}, \texttt{queue\_slope\_5m}, \texttt{util\_slope\_5m} = \texttt{diff(5)/5}.
+  \item \textbf{EWMA} (exponentially weighted moving average, $\alpha=0.2$): smooths jitter while still
+  reacting to real trends --- \texttt{rtt\_ewma}, \texttt{queue\_ewma}.
+  \item \textbf{Domain interaction features:}
+  \[ \text{buffer\_stress\_index}=\frac{\text{queue}\times\text{util}}{100}, \]
+  \[ \text{congestion\_pressure\_score}=\mathrm{clip}\big(0.4\,Q+5\max(0,\text{rtt\_slope})+10\,L+0.8\,D,\ 0,\ 150\big). \]
+\end{itemize}
+
+\warn{\textbf{Zero future leakage.} Every rolling/slope/EWMA feature looks \emph{only backward} in time
+(\texttt{min\_periods=1}, past differences). It never uses values from after the current minute. This is
+critical for an honest time-series model (see next section).}
+
+\note{\textbf{Feature-count caveat (a reviewer may notice).} Different documents say 17 / 18 / 29 / 48
+features. The reason: the Jupyter notebook adds \textbf{17} engineered columns on top of the raw signals; the
+production backend's \texttt{feature\_extractor.py} computes a larger set (docs quote ``29''); an early diary
+note said 48. If asked, give the concrete number for the artefact you are showing (``the notebook uses 17
+engineered features on top of the cleaned signals'') rather than a vague figure.}
+
+% =====================================================================
+\section{Validation: walk-forward split with embargo (the honesty engine)}
+% =====================================================================
+\subsection{The mistake that teaches the lesson}
+The first model scored \textbf{ROC-AUC 0.994} --- and it was \emph{wrong}. It used
+\texttt{KFold(shuffle=True)}. In time series, neighbouring minutes are $\sim$99\% correlated, so a shuffled
+split lets the model ``peek'' at samples next to the test point. The model was \emph{memorising}, not
+forecasting. This is \textbf{temporal data leakage}.
+
+\subsection{The fix: walk-forward + embargo gap}
+Split the timeline \emph{chronologically} (never shuffle), and leave a \textbf{30-minute embargo gap} between
+folds so that rolling features (e.g.\ a 15-min window) cannot straddle the boundary:
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{3.3cm}p{3.1cm}X@{}}
+\toprule
+\textbf{Fold} & \textbf{Rows} & \textbf{Purpose} \\
+\midrule
+Train (65\%) & 0--6{,}500 & fit the model \\
+Embargo & 30 min gap & block leakage \\
+Calibration (15\%) & 6{,}530--8{,}000 & calibrate probabilities + conformal quantile \\
+Embargo & 30 min gap & block leakage \\
+Test (20\%) & 8{,}030--10{,}080 & honest out-of-sample score \\
+\bottomrule
+\end{tabularx}
+\end{center}
+After this fix the score dropped to a \emph{truthful} ROC-AUC of about \textbf{0.78--0.84}. Lower, but real.
+
+\note{\textbf{The one-liner to remember:} ``Shuffling a time series inflates your score because the future
+leaks into the past. Walk-forward validation with an embargo gap is the only honest way to test a forecaster.''}
+
+% =====================================================================
+\section{The models and why each was chosen}
+% =====================================================================
+\subsection{Why LightGBM (gradient-boosted trees), not an LSTM}
+LSTMs/GRUs/Transformers were tried first and lost, for three concrete reasons:
+\begin{enumerate}
+  \item \textbf{Speed:} LSTM inference was $\sim$18\,ms; at 10{,}000 events/s that creates a backlog.
+  LightGBM is sub-millisecond on a CPU, no GPU needed.
+  \item \textbf{Tabular friction:} telemetry mixes continuous gauges with discrete counters/IDs. Trees handle
+  mixed tabular features natively, with no scaling and graceful handling of missing values.
+  \item \textbf{Sharp transients:} LSTM gating smooths over the sudden microburst spikes that matter most;
+  trees cut sharp thresholds and keep the cliff edges.
+\end{enumerate}
+\textbf{Key reframe:} with a rich rolling window, the network state is approximately \textbf{Markovian} ---
+you don't need recurrence; you can hand explicit trend features to a tree model.
+
+\subsection{Primary model: Multi-Horizon LightGBM classifier}
+One classifier per horizon (T+5, T+15, T+30). Hyperparameters:
+\begin{lstlisting}
+lgb.LGBMClassifier(n_estimators=120, max_depth=5, learning_rate=0.06,
+                   num_leaves=24, class_weight="balanced",
+                   random_state=42, verbose=-1)
+\end{lstlisting}
+
+\subsection{Baselines (to prove the model earns its place)}
+\begin{itemize}
+  \item \textbf{Heuristic:} alert if \texttt{queue\_occupancy > 75\%}. Simple rule; many false alarms.
+  \item \textbf{Logistic Regression} (scaled features): linear, can't capture the non-linear queue curve.
+  \item \textbf{Naive persistence / moving average:} ``it'll be like now / like the 15-min average''.
+\end{itemize}
+
+\subsection{Stage-1 anomaly detector (decoupled): Isolation Forest}
+Unsupervised ``is this reading weird \emph{right now}?'' (\texttt{n\_estimators=100},
+\texttt{contamination=0.05}, with a RobustScaler). It is deliberately \emph{separate} from the forecaster so
+the dashboard can tell apart a harmless transient spike (anomaly, but low future risk) from a real impending
+failure (high future risk). This 4-quadrant view kills alert fatigue.
+
+\subsection{Continuous forecaster: LightGBM regressor}
+Predicts the actual future RTT at T+15 (\texttt{n\_estimators=100, max\_depth=5, lr=0.07}); its residuals feed
+the conformal interval.
+
+\subsection{Second research track: TraceGNN (on Hugging Face)}
+A separate, more advanced model: a directed \textbf{Graph Attention Network (GAT, 4 heads)} that takes a
+microservice distributed-trace DAG (from OpenTelemetry) and finds the \emph{root-cause} service of a failure.
+Reported top-1 accuracy 98.4\%, F1 0.978, ROC-AUC 0.994 vs weaker baselines (max-duration heuristic 64.2\%,
+random forest 78.5\%). This shows graph ML in addition to tabular ML.
+
+% =====================================================================
+\section{Probability calibration (making the \% trustworthy)}
+% =====================================================================
+Raw tree outputs are good \emph{rankings} but poor \emph{probabilities} --- a ``0.85'' might really fail only
+40\% of the time. If operators can't trust the number, they ignore alarms (alert fatigue). Fix:
+\textbf{Isotonic Regression} (a monotonic, non-parametric fit solved by the Pool-Adjacent-Violators
+Algorithm, PAVA) trained \emph{on the calibration fold}. Quality is measured by the \textbf{Brier score}
+(mean squared error of probabilities, lower is better):
+\[ BS=\frac{1}{N}\sum_{i=1}^{N}(f_i-y_i)^2. \]
+After isotonic calibration, a predicted ``80\%'' really means $\sim$80 of 100 such cases fail.
+
+\warn{\textbf{Numbers differ across the project's own docs} --- know this before the viva. The technical report
+quotes Brier \textbf{0.0482 $\rightarrow$ 0.0157} (raw $\rightarrow$ calibrated); the dev diary quotes
+\textbf{0.284 $\rightarrow$ 0.061}. The \emph{method} is identical; only the quoted run differs. Safest answer:
+``Isotonic calibration cut the Brier score by roughly 3--4$\times$; the headline figure I report is
+\textbf{0.0157}.''}
+
+% =====================================================================
+\section{Conformal prediction (guaranteed uncertainty bands)}
+% =====================================================================
+A single number (``RTT will be 142\,ms'') is reckless during a surge. \textbf{Split conformal prediction}
+gives an interval with a \emph{distribution-free, finite-sample} coverage guarantee.
+
+\textbf{Recipe (very simple):}
+\begin{enumerate}
+  \item On the calibration set, compute residuals $R_i=|y_i-\hat{y}_i|$ (how wrong the model was).
+  \item Pick the rank $k=\lceil (n+1)(1-\alpha)\rceil$ and take $\hat q = R_{(k)}$ (the $(1-\alpha)$ empirical
+  quantile). For 90\% coverage, $\alpha=0.10$.
+  \item For any new point: interval $=[\hat y-\hat q,\ \hat y+\hat q]$.
+\end{enumerate}
+\textbf{Guarantee:} $P\big(y\in[\hat y-\hat q,\hat y+\hat q]\big)\geq 1-\alpha$, needing only that
+calibration and test points are \emph{exchangeable} (no Gaussian assumption). In the backend
+$\hat q_{RTT}\approx\pm6.5$\,ms and $\hat q_{loss}\approx\pm0.4\%$; measured test coverage $\approx$90\%.
+
+\subsection{Three conformal ``flavours'' (shown in the Hugging Face demo)}
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{3.5cm}Xp{2.4cm}@{}}
+\toprule
+\textbf{Method} & \textbf{What it guarantees} & \textbf{Drift-robust?} \\
+\midrule
+Split Conformal (Vovk 2005) & marginal coverage $P(y\in C(X))\geq1-\alpha$ & no \\
+Adaptive CI --- ACI (Gibbs \& Cand\`es 2021) & long-run coverage under drift, via $\alpha_{t+1}=\alpha_t+\gamma(\alpha-\text{err}_t)$ & yes \\
+Mondrian CP (Vovk 2003) & \emph{conditional} coverage \emph{per regime} (linear / microburst / saturation) using a separate $\hat q_k$ per group & partition-aware \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\textbf{Why Mondrian here:} plain split-CP \emph{under-covers} during saturation (the dangerous regime) and
+\emph{over-covers} in calm periods. Splitting the residuals by regime restores honest coverage exactly where
+safety matters most --- during heavy-tailed microbursts.
+
+% =====================================================================
+\section{Explainability: TreeSHAP}
+% =====================================================================
+Operators won't trust a black box. \textbf{SHAP} (SHapley Additive exPlanations) splits a prediction into
+exact additive contributions of each feature ($\phi_i$). \textbf{TreeSHAP} computes these in polynomial time
+$O(T\cdot L\cdot D^2)$ --- fast enough for real time ($<$2\,ms) --- instead of KernelSHAP's exponential cost.
+The dashboard renders a waterfall per alert, e.g.\ \emph{``queue-delay slope contributed +42\% to this
+risk''}, so an engineer sees the root cause in milliseconds. Globally, mean $|$SHAP$|$ ranks the top drivers
+of failure.
+
+% =====================================================================
+\section{What-if (counterfactual) simulation --- the decision tool}
+% =====================================================================
+A forecast is only useful if you can act. The \textbf{What-If Scenario Lab} lets an operator test a fix
+\emph{before} touching production:
+\begin{itemize}
+  \item Sliders: \textbf{traffic diversion \%}, \textbf{rate-limit \%}, \textbf{buffer-expansion factor}.
+  \item It recomputes the physical features (lower utilisation $\rightarrow$ lower queue $\rightarrow$ gentler
+  slope), re-runs the calibrated model, and reports the new risk and a verdict
+  (\textsc{optimal} $\leq-50\%$, \textsc{effective} $\leq-20\%$, \textsc{marginal}, \textsc{ineffective}).
+\end{itemize}
+Example from the notebook: an incident at risk \textbf{92.5\%}; simulating a \textbf{25\% traffic diversion}
+drops the predicted risk into a safe state --- all \emph{before} reconfiguring any switch.
+
+% =====================================================================
+\section{Results \& benchmarks (with honest caveats)}
+% =====================================================================
+Out-of-sample test (T+15 horizon, $\sim$2{,}016 rows, incident rate $\approx$2.5\%):
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}Xcccc@{}}
+\toprule
+\textbf{Model} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Brier} & \textbf{F1} \\
+\midrule
+LightGBM (calibrated) & 0.6125 & 0.8389 & \textbf{0.0157} & 0.706 \\
+Logistic Regression   & 0.6157 & 0.8393 & 0.0166 & 0.649 \\
+Moving Average (15m)  & 0.4866 & 0.8783 & 0.0724 & 0.413 \\
+Naive Persistence     & 0.7096 & 0.8491 & 0.0329 & 0.706 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\warn{\textbf{Don't oversell --- and be ready for this.} On this particular test slice some baselines are
+\emph{close to} (or on one metric better than) LightGBM. The honest framing: ``LightGBM's advantage is the
+\textbf{calibrated, well-behaved probabilities} (best Brier by a wide margin) plus explainability and
+uncertainty --- not a huge raw-AUC gap on an easy, highly imbalanced slice. On harder regimes and across
+horizons the tree model generalises better than the linear/heuristic baselines.''}
+
+\subsection{Latency (speed) numbers}
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}Xcc@{}}
+\toprule
+\textbf{Component} & \textbf{p50} & \textbf{p99} \\
+\midrule
+Raw LightGBM C-booster (\texttt{predict}) & 0.048\,ms & 0.18\,ms \\
+LightGBM via pandas path & 1.83\,ms & 2.94\,ms \\
+TreeSHAP explainer & 2.95\,ms & 3.99\,ms \\
+Conformal interval & 0.003\,ms & 0.008\,ms \\
+End-to-end telemetry tick & 93\,ms & 119\,ms \\
+\bottomrule
+\end{tabularx}
+\end{center}
+\note{\textbf{Reconcile the ``0.14\,ms'' claim.} The sub-0.2\,ms figure is the \emph{native C-booster} path on
+raw NumPy arrays. The $\sim$1.8\,ms is the convenience pandas path (DataFrame overhead). The 93\,ms end-to-end
+tick includes everything else (feature build, anomaly scoring, SHAP, I/O). All three are true --- just be
+precise about \emph{which} you quote.}
+
+\subsection{The Hugging Face queuing-delay model's metrics}
+The published model card for \texttt{netpredict-telemetry-lgbm} reports (on the 6-feature eBPF dataset):
+RMSE 0.398\,ms, MAE 0.281\,ms, $R^2=0.9924$, 95\% conformal coverage 95.12\%, p50 inference 0.14\,ms,
+$\hat q=0.742$\,ms. These describe a \emph{different} task (single-horizon queuing-delay \emph{regression}),
+not the multi-horizon classifier above --- keep the two straight.
+
+% =====================================================================
+\section{Everything that lives on Hugging Face (your inventory)}
+% =====================================================================
+You asked specifically about this --- here is the full list under the account
+\href{https://huggingface.co/The-AnkitPatel}{\texttt{The-AnkitPatel}}.
+
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{4.9cm}p{2.1cm}X@{}}
+\toprule
+\textbf{Repo} & \textbf{Type} & \textbf{What it is} \\
+\midrule
+\pf{netpredict-telemetry-lgbm} & Model & LightGBM queuing-delay regressor (6 features $\rightarrow$ latency), MIT. \\
+\pf{otel-trace-gnn} & Model & GAT graph model for microservice root-cause, Apache-2.0. \\
+\pf{ebpf-network-telemetry} & Dataset & 15{,}000 rows, 6 eBPF/XDP features + latency target. \\
+\pf{otel-microservice-trace-anomalies} & Dataset & 180{,}000 spans / 15{,}000 trace DAGs, 12 services, 5 fault types + nominal. \\
+\pf{netpredict-conformal-telemetry} & Space (Gradio) & Live 7-tab demo of the whole conformal pipeline. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{The Hugging Face eBPF dataset --- how \emph{it} is generated}
+This is a \emph{second, simpler} synthetic schema (6 features), generated in the Space's \texttt{app.py}
+(\texttt{generate\_calibration\_data}, \texttt{np.random.default\_rng(42)}). Features:
+\texttt{ingress\_mbps, active\_flows, arrival\_kpps, buffer\_util\_pct, loss\_rate\_pct, jitter\_ms};
+target \texttt{latency\_ms}. The physics is an \textbf{M/M/1-style queuing} formula:
+\[ \text{queuing}=\frac{\text{buffer\_util}}{100-\text{buffer\_util}+\varepsilon}\times0.85,\qquad
+   \text{latency}=1.2+\text{queuing}+3.5\cdot\text{loss}+\text{noise}. \]
+Loss turns on above 80\% buffer; each row is tagged with a \textbf{regime}
+(linear / microburst / saturation) used by Mondrian CP. The live app synthesises 6{,}000 rows (60/40
+train/calibration); the published CSV has 15{,}000 rows.
+
+\subsection{The Space's 7 tabs (what the demo shows)}
+(1) Split Conformal, (2) Adaptive CI, (3) Mondrian CP, (4) eBPF/XDP kernel pipeline (an XDP program parses
+Ethernet/IP/TCP/UDP in a 1\,MiB ring buffer and exports the 6-feature schema in kernel space),
+(5) \textbf{Treelite + clang -O3} C-compilation (drops the tree inference from $\sim$0.53\,ms Python to
+\textbf{65--95\,ns} per call), (6) enterprise serving (Truss / Baseten), (7) preprint abstract + BibTeX +
+benchmark table (mean 0.577\,ms, p50 0.532, p99 1.027\,ms, 1{,}731 RPS, sub-ms SLA 98.78\%).
+
+\subsection{Also published}
+A \textbf{Kaggle} notebook: \texttt{theankitkumarpatel/conformalized-lightgbm-network-telemetry}.
+
+% =====================================================================
+\section{Technology stack (one-glance table)}
+% =====================================================================
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{3.4cm}X@{}}
+\toprule
+\textbf{Area} & \textbf{Tools} \\
+\midrule
+Language & Python 3.12, TypeScript \\
+Backend & FastAPI, Uvicorn, Pydantic \\
+ML / stats & LightGBM, scikit-learn (IsolationForest, IsotonicRegression, LogisticRegression), SHAP, NumPy, pandas, SciPy \\
+Data viz & Matplotlib, Seaborn, Plotly \\
+Kernel telemetry & eBPF / XDP (BCC), psutil, raw sockets \\
+Frontend & React 19, Vite, TypeScript \\
+Docs & Next.js + Fumadocs, Obsidian vault \\
+Serving / deploy & Docker Compose, Gradio (HF Space), Treelite + clang, Truss/Baseten, Vercel \\
+Reproducibility & fixed seed 42, walk-forward split, versioned model artefacts (\texttt{.joblib}) \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% =====================================================================
+\section{Glossary (say these in plain words)}
+% =====================================================================
+\begin{description}[leftmargin=0pt,style=nextline]
+  \item[Bufferbloat] Oversized buffers hold packets instead of dropping them, so latency balloons before any loss.
+  \item[RTT / latency] Round-trip time --- how long a packet takes to go and come back.
+  \item[Jitter] Variation in latency; unstable delay.
+  \item[Delay gradient $dRTT/dt$] How fast latency is rising --- the early-warning signal.
+  \item[Queue occupancy] How full the router buffer is (\%).
+  \item[Diurnal cycle] The daily up-and-down pattern of traffic (quiet at night, busy afternoon).
+  \item[Multi-horizon] Predicting several future times at once (5, 15, 30 min).
+  \item[LightGBM / GBDT] Gradient-boosted decision trees --- many small trees added in sequence.
+  \item[Isolation Forest] Unsupervised outlier detector (isolates weird points fast).
+  \item[Temporal leakage] Letting future information sneak into training; inflates scores dishonestly.
+  \item[Walk-forward split] Train on past, test on future, in time order (never shuffle).
+  \item[Embargo gap] A blackout gap between folds so rolling features can't straddle the boundary.
+  \item[Calibration / Brier] Making predicted \% match real frequency; Brier = MSE of probabilities.
+  \item[Isotonic regression / PAVA] A monotonic calibration curve fit by pool-adjacent-violators.
+  \item[Conformal prediction] Distribution-free prediction \emph{intervals} with a coverage guarantee.
+  \item[Coverage] Fraction of true values that land inside the interval (target 90\%).
+  \item[Mondrian CP] Conformal with a separate quantile per group/regime.
+  \item[ACI] Adaptive conformal that adjusts $\alpha$ over time to stay honest under drift.
+  \item[SHAP / TreeSHAP] Exact additive feature-attribution for each prediction; TreeSHAP is the fast tree version.
+  \item[Counterfactual] A ``what if I changed X'' simulation.
+  \item[M/M/1/K queue] A finite-buffer queuing model (Poisson arrivals/service, buffer size $K$); explains tail-drop.
+  \item[eBPF / XDP] Linux tech to run small programs in the kernel to capture packet/TCP metrics with almost no overhead.
+  \item[OpenTelemetry / span / trace / DAG] Standard for distributed tracing; a trace is a graph of service calls.
+  \item[GAT] Graph Attention Network --- a neural net that learns on graphs using attention over neighbours.
+\end{description}
+
+% =====================================================================
+\section{Likely cross-questions (with answers)}
+% =====================================================================
+These are the questions a data-analytics faculty / interviewer is most likely to fire. Short, confident answers.
+
+\subsection{Data \& analytics}
+\Q{Is this real data or synthetic?}
+\A{Synthetic, by design --- a physics-grounded simulator with fixed seed 42, so I get exact ground-truth
+labels, control over rare failures, and full reproducibility. The shape mimics public MAWI/CAIDA traffic.}
+
+\Q{How exactly did you generate it?}
+\A{A diurnal cosine traffic cycle drives utilisation; queue builds past $\sim$40\% utilisation; latency is
+$14+(q/100)^2\cdot120$; loss switches on sharply above 85\% queue; nine scripted incidents inject failures;
+labels are the ``severe'' condition shifted 5/15/30 minutes into the future.}
+
+\Q{Why is accuracy not your main metric?}
+\A{Only $\sim$2.8\% of rows are positive --- a model that always says ``no failure'' gets $\sim$97\% accuracy
+but is useless. So I use PR-AUC, ROC-AUC, Brier score and F1, and \texttt{class\_weight="balanced"}.}
+
+\Q{How did you handle missing values and outliers?}
+\A{Sort by time, drop duplicate timestamps, convert sensor error codes ($-999$ RTT, $>$100\% queue) to NaN,
+then forward-fill + back-fill (because network state is continuous in time), then clamp to physical ranges.}
+
+\Q{Why forward-fill instead of mean imputation?}
+\A{Mean/median destroys the time structure. The most recent valid reading is the best estimate of the current
+hidden state, and forward-fill only uses the past (causal).}
+
+\subsection{Modelling}
+\Q{Why LightGBM over deep learning (LSTM)?}
+\A{Sub-ms CPU inference vs $\sim$18\,ms for LSTM; native handling of mixed tabular features and missing values;
+and trees keep the sharp microburst transients that LSTM gates smooth away. With a rich rolling window the
+problem is effectively Markovian, so recurrence isn't needed.}
+
+\Q{Your first model got 0.994 AUC --- why did you not report that?}
+\A{It was temporal leakage from a shuffled split. After switching to walk-forward validation with a 30-minute
+embargo, the honest score was $\sim$0.78--0.84. I report the honest one.}
+
+\Q{What is the embargo gap and why 30 minutes?}
+\A{A blackout gap between train/calibration/test so that rolling features (up to 15-min windows) and the
+forecast horizon can't overlap across the boundary; 30 min safely exceeds the longest window + horizon lag.}
+
+\Q{What do your three baselines prove?}
+\A{That a simple threshold rule and a linear model (and naive persistence) can't match the calibrated,
+non-linear tree model --- especially on probability quality (Brier).}
+
+\Q{Why a separate anomaly detector and a forecaster?}
+\A{They answer different questions: ``abnormal now'' vs ``will fail soon''. Decoupling them lets me suppress
+harmless transient spikes (anomaly but low future risk) and avoid alert fatigue.}
+
+\subsection{Statistics / uncertainty}
+\Q{What does conformal prediction guarantee, and under what assumption?}
+\A{$P(y\in C(X))\geq 1-\alpha$ in finite samples, assuming calibration and test points are exchangeable. No
+distributional (Gaussian) assumption is needed.}
+
+\Q{Difference between calibration and conformal?}
+\A{Calibration makes the \emph{probability} honest (80\% means 80\%). Conformal makes the \emph{interval}
+honest (the true value is inside 90\% of the time). Different guarantees.}
+
+\Q{Why Mondrian conformal instead of plain split conformal?}
+\A{Plain split-CP only guarantees \emph{marginal} coverage; it under-covers in the dangerous saturation regime
+and over-covers in calm periods. Mondrian uses a per-regime quantile to restore \emph{conditional} coverage
+where safety matters.}
+
+\Q{What is the Brier score and what was your improvement?}
+\A{Mean squared error of predicted probabilities (lower = better). Isotonic calibration cut it by roughly
+3--4$\times$ (headline 0.0157).}
+
+\subsection{Systems / deployment}
+\Q{How is it fast enough for real time?}
+\A{LightGBM's native C booster predicts in $\sim$0.05\,ms (p99 $<$0.2\,ms); conformal adds microseconds;
+and with Treelite + clang -O3 the tree compiles to $\sim$65--95\,ns per call. No GPU needed.}
+
+\Q{What does the eBPF part do?}
+\A{A small in-kernel XDP/BCC program reads TCP metrics (smoothed RTT, retransmits, loss) and packet counters
+with almost no overhead, and exports the feature schema to user space via a ring buffer.}
+
+\Q{Walk me through the architecture.}
+\A{Ingest $\rightarrow$ $O(1)$ sliding-window ring buffer $\rightarrow$ causal feature extractor $\rightarrow$
+(Isolation Forest + multi-horizon LightGBM) $\rightarrow$ isotonic calibration + conformal interval +
+TreeSHAP $\rightarrow$ what-if simulator $\rightarrow$ React cockpit.}
+
+\subsection{``Gotcha'' questions (be ready)}
+\Q{The two datasets have different columns --- explain.}
+\A{Yes: the backend/notebook dataset is a 12-signal router/SNMP schema (10{,}080 rows, multi-horizon
+classification + regression); the Hugging Face \texttt{ebpf-network-telemetry} is a simpler 6-feature eBPF
+schema (15{,}000 rows, single-horizon latency regression). Same idea, two framings for two deliverables.}
+
+\Q{Your model card quotes $R^2=0.9924$ but your classifier AUC is only $\sim$0.84 --- contradiction?}
+\A{No --- different tasks. $R^2=0.9924$ is the \emph{regression} of queuing delay on the eBPF dataset
+(an easy, smooth target); 0.84 is the \emph{classification} of rare future failures on the router dataset
+(hard, imbalanced). They measure different things on different data.}
+
+\Q{Can you prove the Hugging Face model works?}
+\A{Be honest: the model \emph{card} is published with metrics, but the weight file (\texttt{model.txt}) is not
+yet uploaded to that repo --- the Space regenerates and trains the model at runtime. If asked to load it from
+the Hub, that download will currently fail; the reproducible path is the Space/Kaggle code.}
+
+% =====================================================================
+\section{Be careful about this (honesty checklist before any viva)}
+% =====================================================================
+\warn{Read this list once so nothing catches you off guard. None of it is fatal --- it is about
+\emph{how you phrase} things.}
+\begin{enumerate}
+  \item \textbf{Data is synthetic.} Never call it real captured traffic. Call it a physics-grounded simulator.
+  \item \textbf{``IIT Roorkee / Distributed Systems \& Telemetry Lab'', ``NIT Uttarakhand'', ``CNCF
+  OpenTelemetry-Go contributor''} appear on the published cards. Only claim affiliations/roles you can actually
+  back up; otherwise describe it as a solo student research project (which the dev diary itself says it is).
+  \item \textbf{Metric inconsistencies} exist across the docs (Brier 0.0482$\rightarrow$0.0157 vs
+  0.284$\rightarrow$0.061; AUC 0.78 vs 0.84; features 17/18/29/48; ``9 incidents'' vs a comment saying ``18'';
+  latency 0.14 vs 1.8 vs 93\,ms). Pick one consistent set of headline numbers and know \emph{which artefact}
+  each belongs to.
+  \item \textbf{HF model weight file missing.} \texttt{netpredict-telemetry-lgbm} currently has only the README
+  (no \texttt{model.txt}); the live model is trained inside the Space. Say so if asked to load it.
+  \item \textbf{Two different schemas / datasets} (12-feature router vs 6-feature eBPF) --- don't mix their
+  numbers.
+  \item \textbf{Repo name typo:} some clone instructions say \texttt{NetPreditct} (extra ``t''); the repo is
+  \texttt{NetPredict}.
+  \item \textbf{Baselines are competitive} on the easy test slice --- lead with calibration/uncertainty/
+  explainability as the real differentiators, not a huge AUC gap.
+\end{enumerate}
+
+% =====================================================================
+\section{How to run / reproduce (quick reference)}
+% =====================================================================
+\begin{lstlisting}
+# Full app (Docker)
+git clone https://github.com/The-AnkitPatel/NetPredict && cd NetPredict
+docker compose up --build        # dashboard :5173, API :8000/docs
+
+# Backend only
+python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt psutil
+pytest backend/tests -v
+uvicorn backend.app.main:app --port 8000 --reload
+
+# The analytics notebook (the data-analytics deliverable)
+notebooks/NetPredict_ML_Pipeline.ipynb   # 11 cells, end to end
+
+# Hugging Face live demo
+# https://huggingface.co/spaces/The-AnkitPatel/netpredict-conformal-telemetry
+\end{lstlisting}
+
+The notebook is the cleanest thing to present to a data-analytics reviewer: it runs top-to-bottom through
+ingestion $\rightarrow$ cleaning (with a before/after audit table) $\rightarrow$ feature engineering
+$\rightarrow$ EDA plots $\rightarrow$ walk-forward split $\rightarrow$ model vs baselines $\rightarrow$
+calibration $\rightarrow$ conformal intervals $\rightarrow$ TreeSHAP $\rightarrow$ what-if simulation.
+
+% =====================================================================
+\section*{Appendix: file map}
+\addcontentsline{toc}{section}{Appendix: file map}
+% =====================================================================
+\begin{center}
+\begin{tabularx}{\linewidth}{@{}p{6.2cm}X@{}}
+\toprule
+\textbf{Path} & \textbf{Contents} \\
+\midrule
+\pf{backend/app/services/dataset_loader.py} & synthetic 7-day trace generator \\
+\pf{backend/app/services/feature_extractor.py} & causal rolling / slope / EWMA features \\
+\pf{backend/app/services/sliding_window.py} & $O(1)$ ring buffer (deque maxlen 720) \\
+\pf{backend/app/ml/predictor_model.py} & multi-horizon LightGBM + calibrators \\
+\pf{backend/app/ml/conformal_predictor.py} & split conformal intervals \\
+\pf{backend/app/ml/anomaly_detector.py} & Isolation Forest \\
+\pf{backend/app/ml/shap_explainer.py} & TreeSHAP attributions \\
+\pf{backend/app/services/simulation_service.py} & counterfactual what-if engine \\
+\pf{backend/app/collectors/ebpf_sockops.c} & eBPF/BCC kernel TCP probe \\
+\pf{notebooks/NetPredict_ML_Pipeline.ipynb} & 11-stage analytics notebook \\
+\pf{docs/NETPREDICT_TECHNICAL_RESEARCH_REPORT.md} & long technical report \\
+\texttt{obsidian\_vault/05 .../Dev Diary.md} & the ``why/journey'' narrative \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\vfill
+\begin{center}\small\textcolor{greydk}{Prepared as an end-to-end study and interview guide for the NetPredict project.}\end{center}
+
+\end{document}
