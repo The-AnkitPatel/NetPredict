@@ -29,8 +29,7 @@ class SimulationService:
                     "packet_loss_pct": 0.8,
                     "tcp_retrans_rate": 4.5,
                     "interface_discards_sec": 6.0,
-                    "rtt_slope_5m": 2.2,
-                    "queue_slope_5m": 2.8,
+                    "rtt_slope_5m": 2.0,
                     "buffer_stress_index": 63.9,
                     "congestion_pressure_score": 45.0,
                 }
